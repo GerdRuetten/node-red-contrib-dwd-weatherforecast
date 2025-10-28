@@ -31,7 +31,7 @@ key weather parameters such as temperature, humidity, wind, pressure, and precip
 
 1. Open Node-RED in your browser  
 2. Go to **Menu → Manage palette → Install**
-3. Search for **`node-red-contrib-dwd-forecast`**
+3. Search for **`node-red-contrib-dwd-weatherforecast`**
 4. Click **Install**
 
 ### Using command line (for Docker or local installations)
