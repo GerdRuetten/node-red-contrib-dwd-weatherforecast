@@ -1,0 +1,35 @@
+{
+  "name": "node-red-contrib-dwd-weatherforecast",
+  "version": "1.0.0",
+  "description": "Node-RED node for official DWD MOSMIX forecast (KMZ/KML) per weather station. Parses the forecast, normalizes it, and outputs a structured JSON time series.",
+  "license": "MIT",
+  "author": {
+    "name": "Gerd Ruetten"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GerdRuetten/node-red-contrib-dwd-weatherforecast.git"
+  },
+  "keywords": [
+    "node-red",
+    "dwd",
+    "forecast",
+    "weather",
+    "mosmix",
+    "station",
+    "kmz",
+    "kml",
+    "opendata"
+  ],
+  "dependencies": {
+    "request": "^2.88.2",
+    "adm-zip": "^0.5.10",
+    "xml2js": "^0.6.2",
+    "moment-timezone": "^0.5.43"
+  },
+  "node-red": {
+    "nodes": {
+      "dwd-weatherforecast": "nodes/dwd-weatherforecast.js"
+    }
+  }
+}

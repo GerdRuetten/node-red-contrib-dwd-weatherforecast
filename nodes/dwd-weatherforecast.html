@@ -1,0 +1,157 @@
+<script type="text/javascript">
+    RED.nodes.registerType('dwd-weatherforecast',{
+        category: 'weather',
+        color: '#3a7bd5',
+        defaults: {
+            name:              { value: "" },
+            station:           { value: "", required: true },
+            sourceUrl:         { value: "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz" },
+
+            // Laufzeit
+            runOnDeploy:       { value: true },
+            autoRefreshSeconds:{ value: 0, validate: v => Number(v) >= 0 },
+            allowStale:        { value: true },
+
+            // Filter
+            onlyFuture:        { value: true },
+            hoursLimit:        { value: 0, validate: v => Number(v) >= 0 },
+
+            // Ausgabe
+            outputCelsius:     { value: true },
+            outputHectoPascal: { value: true },   // Druck (hPa)
+            outputWindKmh:     { value: true },   // Wind (km/h)
+            outputVisibilityKm:{ value: true },   // Sichtweite (km)
+            coreOnly:          { value: false }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-cloud",
+        label: function() {
+            return this.name || "DWD-Forecast (MOSMIX_L)";
+        },
+        oneditprepare: function () {
+            const $auto = $("#node-input-autoRefreshSeconds");
+            $auto.on("change keyup", function(){
+                const v = Number($(this).val() || 0);
+                if (isNaN(v) || v < 0) {
+                    $(this).val(0);
+                }
+            });
+            const $hours = $("#node-input-hoursLimit");
+            $hours.on("change keyup", function(){
+                const v = Number($(this).val() || 0);
+                if (isNaN(v) || v < 0) {
+                    $(this).val(0);
+                }
+            });
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="dwd-weatherforecast">
+    <style>
+        .nr-row { display:flex; gap:12px; align-items:center; }
+        .nr-row > * { flex:1; }
+        .nr-note { color:#777; font-size: 11px; margin-top:4px; }
+    </style>
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="z. B. DWD MOSMIX_L H721">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-station"><i class="fa fa-map-marker"></i> Station</label>
+        <input type="text" id="node-input-station" placeholder="z. B. H721" />
+        <div class="nr-note">DWD MOSMIX Stations-ID (z. B. H721). Groß-/Kleinschreibung egal.</div>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-sourceUrl"><i class="fa fa-link"></i> Source-URL</label>
+        <input type="text" id="node-input-sourceUrl">
+        <div class="nr-note">Template mit <code>{station}</code>. Standard: MOSMIX_L single_stations.</div>
+    </div>
+
+    <hr>
+
+    <div class="form-row">
+        <label><i class="fa fa-bolt"></i> Start/Refresh</label>
+        <div class="nr-row">
+            <label style="flex:0 0 auto;">
+                <input type="checkbox" id="node-input-runOnDeploy" style="width:auto; margin-right:6px;">
+                Beim Deploy sofort abrufen
+            </label>
+            <span style="flex:0 0 auto;">Auto-Refresh&nbsp;(Sek.)</span>
+            <input type="number" id="node-input-autoRefreshSeconds" style="width:140px" min="0" step="1" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <label><i class="fa fa-history"></i> Fallback</label>
+        <label>
+            <input type="checkbox" id="node-input-allowStale" style="width:auto; margin-right:6px;">
+            Bei Fehler letzte erfolgreiche Daten senden (stale)
+        </label>
+    </div>
+
+    <hr>
+
+    <div class="form-row">
+        <label><i class="fa fa-filter"></i> Filter</label>
+        <div class="nr-row">
+            <label style="flex:0 0 auto;">
+                <input type="checkbox" id="node-input-onlyFuture" style="width:auto; margin-right:6px;">
+                Nur zukünftige Zeitpunkte
+            </label>
+            <span style="flex:0 0 auto;">Max. Stunden</span>
+            <input type="number" id="node-input-hoursLimit" style="width:140px" min="0" step="1" />
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="form-row">
+        <label><i class="fa fa-sliders"></i> Ausgabe</label>
+        <div class="nr-row" style="flex-wrap:wrap">
+            <label style="flex:0 0 48%;">
+                <input type="checkbox" id="node-input-outputCelsius" style="width:auto; margin-right:6px;">
+                Temperatur in °C (statt K)
+            </label>
+            <label style="flex:0 0 48%;">
+                <input type="checkbox" id="node-input-outputHectoPascal" style="width:auto; margin-right:6px;">
+                Druck in hPa (statt Pa)
+            </label>
+            <label style="flex:0 0 48%;">
+                <input type="checkbox" id="node-input-outputWindKmh" style="width:auto; margin-right:6px;">
+                Windgeschwindigkeit in km/h (statt m/s)
+            </label>
+            <label style="flex:0 0 48%;">
+                <input type="checkbox" id="node-input-outputVisibilityKm" style="width:auto; margin-right:6px;">
+                Sichtweite in km (statt m)
+            </label>
+            <label style="flex:0 0 48%;">
+                <input type="checkbox" id="node-input-coreOnly" style="width:auto; margin-right:6px;">
+                Nur Kernfelder (kompakter Payload)
+            </label>
+        </div>
+    </div>
+</script>
+
+<script type="text/html" data-help-name="dwd-weatherforecast">
+    <p>
+        Holt DWD MOSMIX_L Vorhersagen für eine Station (z. B. H721) aus
+        <code>single_stations</code> und gibt sie als Zeitreihe aus.
+    </p>
+
+    <h3>Eingaben</h3>
+    <ul>
+        <li><code>msg.station</code> (optional) – überschreibt die Station aus der Konfiguration.</li>
+    </ul>
+
+    <h3>Ausgaben</h3>
+    <ul>
+        <li><code>msg.payload</code> – Array von Zeitpunkten: { ts, iso, temperature, windSpeed, windDir, pressure, cloudCover, precipitation, relHumidity, visibility, … }</li>
+        <li><code>msg.station</code> – { name }</li>
+        <li><code>msg._meta</code> – { url, count, stale, outputCelsius, … }</li>
+    </ul>
+</script>
