@@ -38,19 +38,19 @@ key weather parameters such as temperature, humidity, wind, pressure, and precip
 
 ```bash
 cd /data
-npm install --no-fund --no-audit GerdRuetten/node-red-contrib-dwd-forecast
+npm install --no-fund --no-audit GerdRuetten/node-red-contrib-dwd-weatherforecast
 ```
 
 or (if published on npm):
 
 ```bash
-npm install node-red-contrib-dwd-forecast
+npm install node-red-contrib-dwd-weatherforecast
 ```
 
 If Node-RED runs inside Docker, execute from the container shell:
 
 ```bash
-docker exec -u node-red -it node-red bash -lc 'cd /data && npm install --no-fund --no-audit GerdRuetten/node-red-contrib-dwd-forecast#main'
+docker exec -u node-red -it node-red bash -lc 'cd /data && npm install --no-fund --no-audit GerdRuetten/node-red-contrib-dwd-weatherforecast#master'
 ```
 
 Then restart Node-RED.
@@ -175,4 +175,4 @@ MIT © 2025 [Gerd Rütten](https://github.com/GerdRuetten)
 
 ---
 
-> 🧩 **node-red-contrib-dwd-forecast** — bringing official DWD forecast data directly into your Node-RED flows.
+> 🧩 **node-red-contrib-dwd-weatherforecast** — bringing official DWD forecast data directly into your Node-RED flows.
