@@ -43,7 +43,7 @@
   },
   "scripts": {
     "preversion": "node scripts/ensure-changelog.js",
-    "version": "git add -A && git commit -m \"chore(release): v$npm_package_version\" || true",
+    "version": "echo 'Version bump handled automatically by npm version'",
     "postversion": "git push --follow-tags"
   },
   "node-red": {
