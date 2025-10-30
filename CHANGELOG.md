@@ -3,6 +3,14 @@ Alle Änderungen an diesem Projekt werden in diesem Dokument festgehalten.
 
 Das Format folgt **Keep a Changelog** und **SemVer**.
 
+## [1.0.8] - 2025-10-30
+### Changed
+- Release-Prozess verbessert:
+    - Neues Skript `scripts/ensure-changelog.js` prüft beim Versions-Bump automatisch, ob die `CHANGELOG.md` geändert und gestaged wurde.
+    - Neue `preversion`, `version` und `postversion` Hooks in der `package.json` für konsistente Commits und automatischen Push.
+- `package.json` um Release-Skripte erweitert und Build-Prozess optimiert.
+- Keine funktionalen Änderungen am Node-Code selbst.
+
 ## [1.0.7] - 2025-10-30
 ### Changed
 - HTTP-Client: Migration von `request` (deprecated) zu `axios`

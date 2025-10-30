@@ -41,12 +41,10 @@
     "moment-timezone": "^0.5.48",
     "xml2js": "^0.6.2"
   },
-  {
-    "scripts": {
-      "preversion": "node scripts/ensure-changelog.js",
-      "version": "git add -A && git commit -m \"chore(release): v$npm_package_version\" || true",
-      "postversion": "git push --follow-tags"
-    }
+  "scripts": {
+    "preversion": "node scripts/ensure-changelog.js",
+    "version": "git add -A && git commit -m \"chore(release): v$npm_package_version\" || true",
+    "postversion": "git push --follow-tags"
   },
   "node-red": {
     "version": ">=3.0.0",
