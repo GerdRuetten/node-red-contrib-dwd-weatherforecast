@@ -6,9 +6,13 @@
   "author": {
     "name": "Gerd Ruetten"
   },
+  "homepage": "https://github.com/GerdRuetten/node-red-contrib-dwd-weatherforecast#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/GerdRuetten/node-red-contrib-dwd-weatherforecast.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GerdRuetten/node-red-contrib-dwd-weatherforecast/issues"
   },
   "keywords": [
     "node-red",
@@ -21,15 +25,24 @@
     "kml",
     "opendata"
   ],
+  "node-red": {
+    "nodes": {
+      "dwd-weatherforecast": "nodes/dwd-weatherforecast.js"
+    }
+  },
   "dependencies": {
     "request": "^2.88.2",
     "adm-zip": "^0.5.10",
     "xml2js": "^0.6.2",
     "moment-timezone": "^0.5.43"
   },
-  "node-red": {
-    "nodes": {
-      "dwd-weatherforecast": "nodes/dwd-weatherforecast.js"
-    }
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "echo \"No tests defined\""
   }
 }
