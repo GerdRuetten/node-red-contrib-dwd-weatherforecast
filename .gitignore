@@ -1,24 +1,77 @@
-# Logs
-logs
-*.log
+# ======================================
+# 🔧 Node-RED & Node.js Projekte
+# ======================================
+
+# Dependencies
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Build artefacts
+dist/
+build/
+coverage/
+.tmp/
+.temp/
+.cache/
+*.log
+*.pid
+*.seed
+*.pid.lock
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# ======================================
+# ⚙️ Environment / Secrets
+# ======================================
+.env
+.env.local
+.env.*.local
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+
+# ======================================
+# 🧱 Node-RED spezifisch
+# ======================================
+# Node-RED flows / runtime data
+flows_*.json
+flows_*.backup
+*.cred
+lib/
+# Falls du unter /data arbeitest:
+data/*.json
+data/*.backup
+
+# ======================================
+# 🧰 IDEs & Editoren
+# ======================================
+# WebStorm / JetBrains
+.idea/
+*.iml
+
+# VSCode (falls gelegentlich genutzt)
+.vscode/
+
+# ======================================
+# 🐳 Docker / Container
+# ======================================
+docker-compose.override.yml
+*.env.docker
+logs/
+tmp/
+*.sock
+
+# ======================================
+# 🚀 GitHub Actions & CI/CD
+# ======================================
+# Lokale Workflow-Tests oder Cache
+.github/workflows/*.bak
+.github/workflows/*.local.yml
+
+# ======================================
+# 🧾 Sonstiges
+# ======================================
+*.swp
+*.swo
+*~
+*.bak
+Thumbs.db
+Desktop.ini

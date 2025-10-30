@@ -139,15 +139,7 @@ MIT © 2025 [Gerd Rütten](https://github.com/GerdRuetten)
 ---
 
 ## 🧰 Changelog
-
-### v1.0.0
-- Initial release  
-- Full support for DWD MOSMIX_L single stations  
-- Added unit conversions and core data mode  
-- Added precipitation text generation  
-- Added RELH fallback calculation  
-- Added station name + ID metadata  
-- Added stale fallback and auto-refresh options
+Siehe **[CHANGELOG.md](./CHANGELOG.md)**.
 
 ---
 
