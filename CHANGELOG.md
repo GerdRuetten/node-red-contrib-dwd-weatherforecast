@@ -3,6 +3,11 @@ Alle Änderungen an diesem Projekt werden in diesem Dokument festgehalten.
 
 Das Format folgt **Keep a Changelog** und **SemVer**.
 
+## [1.0.4] - 2025-10-30
+### Changed
+- Metadaten in `package.json` erweitert (`homepage`, `bugs`, `publishConfig`, `engines`)
+- Darstellung und Verlinkung auf npm und flows.nodered.org verbessert
+
 ## [1.0.3] - 2025-10-30
 ### Added
 - Neue `.gitignore` im Repository-Root für Node.js-, Node-RED- und WebStorm-Projekte
