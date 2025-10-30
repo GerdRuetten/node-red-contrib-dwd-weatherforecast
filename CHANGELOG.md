@@ -3,8 +3,17 @@ Alle Änderungen an diesem Projekt werden in diesem Dokument festgehalten.
 
 Das Format folgt **Keep a Changelog** und **SemVer**.
 
+## [1.0.6] - 2025-10-30
+### Changed
+- Dependencies aktualisiert: adm-zip, moment-timezone, xml2js (Scorecard „latest deps“)
+- Verifikation: `node-red.version` auf npm vorhanden (Scorecard-Hinweis war Cache)
+
 ## [1.0.5] - 2025-10-30
 ### Changed
+- Release workflow (`.github/workflows/release.yml`) überarbeitet:
+    - Automatische Erstellung von GitHub Releases mit Release Notes
+    - Pflege des `latest`-Tags für klare Zuordnung aktueller Version
+    - Bessere Sicherheits- und Konsistenzchecks vor npm-Publish
 - `package.json`: Mindestversionen ergänzt
     - Node-RED: `"node-red.version": ">=3.0.0"`
     - Node.js/NPM: `"engines": { "node": ">=18.0.0", "npm": ">=9.0.0" }`
@@ -13,8 +22,6 @@ Das Format folgt **Keep a Changelog** und **SemVer**.
 
 ### Security / Maintenance
 - Abhängigkeiten auf aktuelle Ranges geprüft (Scorecard-Hinweis)
-
-[1.0.5]: https://github.com/GerdRuetten/node-red-contrib-dwd-weatherforecast/releases/tag/v1.0.5
 
 ## [1.0.4] - 2025-10-30
 ### Changed

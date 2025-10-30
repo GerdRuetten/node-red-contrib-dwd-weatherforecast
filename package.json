@@ -36,10 +36,10 @@
     "examples/"
   ],
   "dependencies": {
-    "adm-zip": "^0.5.10",
-    "xml2js": "^0.6.2",
-    "moment-timezone": "^0.5.43",
-    "request": "^2.88.2"
+    "adm-zip": "^0.5.16",
+    "moment-timezone": "^0.5.48",
+    "request": "^2.88.2",
+    "xml2js": "^0.6.2"
   },
   "node-red": {
     "version": ">=3.0.0",
