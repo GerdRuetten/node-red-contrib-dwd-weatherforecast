@@ -3,6 +3,11 @@ Alle Änderungen an diesem Projekt werden in diesem Dokument festgehalten.
 
 Das Format folgt **Keep a Changelog** und **SemVer**.
 
+## [1.0.7] - 2025-10-30
+### Changed
+- HTTP-Client: Migration von `request` (deprecated) zu `axios`
+- Stabileres Fehler- und Timeout-Handling bei DWD-Abrufen
+
 ## [1.0.6] - 2025-10-30
 ### Changed
 - Dependencies aktualisiert: adm-zip, moment-timezone, xml2js (Scorecard „latest deps“)

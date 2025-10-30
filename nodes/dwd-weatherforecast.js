@@ -1,388 +1,325 @@
-// nodes/forecast.js – DWD MOSMIX_L Forecast Node (single_stations only)
-//
-// Features
-// • MOSMIX_L (single_stations) – MOSMIX_S NICHT verwendet
-// • Run-on-Deploy & Auto-Refresh
-// • Stale-Fallback (liefert letzte gute Daten bei Fehler)
-// • Filter: nur Zukunft & Stundenlimit
-// • Einheiten: °C, hPa, km/h, Sichtweite in km
-// • Kernfelder-Output (coreOnly)
-// • RELH-Fallback aus T (TTT) & Td (Taupunkt)
-// • precipitationText = Intensität + Typ + „– <mm/h>“
-//
-// Abhängigkeiten:
-//   npm install --no-fund --no-audit request adm-zip xml2js moment-timezone
-//
-const request = require('request');
-const AdmZip = require('adm-zip');
-const { parseString } = require('xml2js');
-const moment = require('moment-timezone');
-moment.tz.setDefault('Europe/Berlin');
+/**
+ * DWD MOSMIX Forecast (KMZ/KML) for Node-RED
+ * - Source: MOSMIX_L single_stations
+ * - URL pattern: https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{STATION}/kml/MOSMIX_L_LATEST_{STATION}.kmz
+ * - UI options reflected in `config`:
+ *   - stationId: string (e.g., "H721")
+ *   - includePressure: boolean
+ *   - includeWind: boolean
+ *   - includeVisibility: boolean  (VV)
+ *   - computePrecipText: boolean  (derive human-readable precipitation text)
+ *   - immediateFetch: boolean     (fetch on deploy)
+ *   - autoRefreshSec: number      (poll every N seconds, 0/empty = off)
+ *   - allowStale: boolean         (if unzip/parse fails temporarily, reuse last good)
+ *   - timeoutMs: number
+ */
 
 module.exports = function (RED) {
+    const axios = require("axios");
+    const AdmZip = require("adm-zip");
+    const xml2js = require("xml2js");
+    const moment = require("moment-timezone");
 
-    // ────────────────────────────────────────────────────────────────────────────
-    // Hilfsfunktionen
-    // ────────────────────────────────────────────────────────────────────────────
+    function DwdWeatherForecastNode(config) {
+        RED.nodes.createNode(this, config);
+        const node = this;
 
-    function classifyPrecipTypeFromWw(wwCode) {
-        const ww = Number(wwCode);
-        if (!Number.isFinite(ww)) return null;
-        if (ww >= 45 && ww <= 49) return 'Nebel/Niesel';
-        if (ww >= 50 && ww <= 55) return 'Nieselregen';
-        if (ww >= 56 && ww <= 59) return 'Regen';
-        if (ww === 66 || ww === 67) return 'gefrierender Regen';
-        if (ww === 68 || ww === 69) return 'gefrierender Niesel';
-        if (ww >= 60 && ww <= 65) return 'Regen';
-        if (ww >= 70 && ww <= 79) return 'Schnee';
-        if (ww >= 80 && ww <= 82) return 'Regenschauer';
-        if (ww >= 83 && ww <= 84) return 'Schneeregenschauer';
-        if (ww >= 85 && ww <= 86) return 'Schneeschauer';
-        if (ww >= 87 && ww <= 89) return 'Graupel/Hagelschauer';
-        if (ww >= 95 && ww <= 99) return 'Gewitter';
-        if (ww >= 90 && ww <= 94) return 'Schauer';
-        return null;
-    }
+        node.stationId = (config.stationId || "").trim();     // e.g. "H721"
+        node.includePressure = !!config.includePressure;
+        node.includeWind = !!config.includeWind;
+        node.includeVisibility = !!config.includeVisibility;
+        node.computePrecipText = !!config.computePrecipText;
 
-    function classifyIntensity(mmPerHour) {
-        if (mmPerHour == null) return null;
-        const v = Number(mmPerHour);
-        if (!Number.isFinite(v) || v <= 0) return 'kein';
-        if (v <= 0.2)  return 'Spuren';
-        if (v <= 1.0)  return 'leicht';
-        if (v <= 5.0)  return 'mäßig';
-        if (v <= 15.0) return 'kräftig';
-        return 'stark';
-    }
+        node.immediateFetch = !!config.immediateFetch;
+        node.autoRefreshSec = Number(config.autoRefreshSec || 0);
+        node.allowStale = !!config.allowStale;
 
-    // Baut IMMER mit Menge, sobald > 0; sonst „kein Niederschlag“
-    function buildPrecipitationText(precip, wwCode) {
-        const amount = Number(precip);
-        const type = classifyPrecipTypeFromWw(wwCode) || 'Niederschlag';
-        const intensity = classifyIntensity(amount);
+        node.timeoutMs = Number(config.timeoutMs || 20000);
 
-        if (!Number.isFinite(amount) || amount <= 0 || intensity === 'kein') {
-            return 'kein Niederschlag';
+        let pollTimer = null;
+        let lastGood = null;
+
+        function statusOK(text) { node.status({ fill: "green", shape: "dot", text }); }
+        function statusWarn(text) { node.status({ fill: "yellow", shape: "ring", text }); }
+        function statusErr(text) { node.status({ fill: "red", shape: "dot", text }); }
+
+        function buildUrl(station) {
+            const s = (station || node.stationId || "").toUpperCase();
+            return `https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/${s}/kml/MOSMIX_L_LATEST_${s}.kmz`;
         }
-        // Formulierungen für bekannte Typen
-        let label = type;
-        if (type === 'Nebel/Niesel') label = 'Nebel/Niesel';
-        if (type === 'gefrierender Regen') label = 'gefrierender Regen';
 
-        // z. B. „Regen (leicht) – 0.3 mm/h“
-        return `${label} (${intensity}) – ${amount.toFixed(1)} mm/h`;
-    }
-
-    // ────────────────────────────────────────────────────────────────────────────
-
-    class DwdForecastNode {
-        constructor(config) {
-            RED.nodes.createNode(this, config);
-
-            // Konfiguration
-            this.name       = config.name || "";
-            this.station    = String(config.station || "").trim().toUpperCase();
-            this.sourceUrl  = (config.sourceUrl || "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz").trim();
-
-            // Laufzeit / Fallback
-            this.runOnDeploy        = !!config.runOnDeploy;
-            this.autoRefreshSeconds = Math.max(0, Number(config.autoRefreshSeconds || 0));
-            this.allowStale         = !!config.allowStale;
-
-            // Filter
-            this.onlyFuture = !!config.onlyFuture;
-            this.hoursLimit = Math.max(0, Number(config.hoursLimit || 0));
-
-            // Ausgabe-Optionen
-            this.outputCelsius      = !!config.outputCelsius;
-            this.outputHectoPascal  = !!config.outputHectoPascal;  // Druck
-            this.outputWindKmh      = !!config.outputWindKmh;      // Wind
-            this.outputVisibilityKm = !!config.outputVisibilityKm; // Sichtweite
-            this.coreOnly           = !!config.coreOnly;
-
-            // State
-            this._ctx = this.context();
-            this._lastGood = this._ctx.get('lastForecast') || null;
-            this._interval = null;
-            this._loggedElementsOnce = false;
-
-            // Events
-            this.on('input', (msg, send, done) => this.fetchOnce(msg, send, done));
-            if (this.runOnDeploy) setTimeout(() => this.fetchOnce({}, null, () => {}), 500);
-            if (this.autoRefreshSeconds > 0) {
-                this._interval = setInterval(() => this.fetchOnce({}, null, () => {}), this.autoRefreshSeconds * 1000);
+        async function fetchKmz(url, timeoutMs) {
+            const res = await axios.get(url, {
+                timeout: timeoutMs || 20000,
+                responseType: "arraybuffer"
+            });
+            if (res.status < 200 || res.status >= 300) {
+                throw new Error(`HTTP ${res.status} for ${url}`);
             }
-            this.on('close', () => { if (this._interval) clearInterval(this._interval); });
+            return Buffer.from(res.data);
         }
 
-        _buildUrl(station, msg) {
-            let tpl = (msg && msg.sourceUrl ? String(msg.sourceUrl) : this.sourceUrl).trim();
-            return tpl.replace(/{station}/g, encodeURIComponent(station));
+        function unzipKml(kmzBuffer) {
+            const zip = new AdmZip(kmzBuffer);
+            const entries = zip.getEntries();
+            const kmlEntry = entries.find(e => e.entryName.toLowerCase().endsWith(".kml"));
+            if (!kmlEntry) throw new Error("KML Document fehlt");
+            const xml = kmlEntry.getData().toString("utf-8");
+            return xml;
         }
 
-        _empty(url, err) {
-            return { payload: [], _meta: { url, error: err } };
+        function findStationName(kml) {
+            // Try Placemark.name or Document.name/description, or ExtendedData/ProductDefinition
+            try {
+                const doc = kml.Document || {};
+                const placemark = doc.Placemark || {};
+                const name = placemark.name || doc.name || null;
+                if (name) return String(name);
+                // fallback: description might contain station name
+                if (placemark.description) return String(placemark.description).replace(/<[^>]+>/g, "").trim();
+                if (doc.description) return String(doc.description).replace(/<[^>]+>/g, "").trim();
+            } catch (_) {}
+            return null;
         }
 
-        _fail(err, url, send, done) {
-            this.status({ fill:'red', shape:'ring', text: err.message });
-            this.error(`DWD-Forecast Fehler: ${err.message}`);
-            if (this.allowStale && this._lastGood) {
-                const stale = JSON.parse(JSON.stringify(this._lastGood));
-                stale._meta = stale._meta || {};
-                stale._meta.stale = true;
-                if (url) stale._meta.url = url;
-                send(stale);
-            } else {
-                send(this._empty(url, err.message));
-            }
-            done();
+        function toTS(iso) {
+            const t = Date.parse(iso);
+            return Number.isFinite(t) ? t : null;
         }
 
-        fetchOnce(msg, send, done) {
-            send = send || this.send.bind(this);
-            done = done || ((err)=>{ if (err) this.error(err); });
+        function mmPerHourFromParams(rec) {
+            // Many MOSMIX elements exist; we already mapped a generic 'precipitation' when available (RR*).
+            // If not present, returns null.
+            if (typeof rec.precipitation === "number") return rec.precipitation;
+            return null;
+        }
 
-            const station = String(msg?.station || this.station || "").trim().toUpperCase();
-            if (!station) {
-                this.status({ fill:'red', shape:'ring', text:'Station fehlt' });
-                send(this._empty(null, 'no_station'));
-                return done();
-            }
+        function humanPrecip(precipMmH) {
+            if (precipMmH == null) return null;
+            if (precipMmH <= 0.0) return "kein Niederschlag";
+            if (precipMmH < 0.1) return `sehr leichter Niederschlag – ${precipMmH.toFixed(1)} mm/h`;
+            if (precipMmH < 0.5) return `Niesel/leichter Niederschlag – ${precipMmH.toFixed(1)} mm/h`;
+            if (precipMmH < 2.0) return `Regen (leicht) – ${precipMmH.toFixed(1)} mm/h`;
+            if (precipMmH < 6.0) return `Regen (mäßig) – ${precipMmH.toFixed(1)} mm/h`;
+            if (precipMmH < 10.0) return `Regen (stark) – ${precipMmH.toFixed(1)} mm/h`;
+            return `starker Niederschlag – ${precipMmH.toFixed(1)} mm/h`;
+        }
 
-            const url = this._buildUrl(station, msg);
-            this.status({ fill:'blue', shape:'dot', text:`Abruf MOSMIX_L…` });
+        function normalizeMOSMIX(kml) {
+            // KML structure (namespaces omitted via xml2js options):
+            // kml -> Document -> ExtendedData (ProductDefinition, ForecastTimeSteps, Forecast) + Placemark (parameters)
+            const root = kml.kml || kml;
+            const doc = root.Document;
+            if (!doc) throw new Error("ProductDefinition fehlt (Document)");
 
-            request({ url, timeout: 20000, encoding: null }, (err, res, body) => {
-                if (err) return this._fail(err, url, send, done);
-                if (res.statusCode < 200 || res.statusCode >= 300) {
-                    return this._fail(new Error(`HTTP ${res.statusCode}`), url, send, done);
-                }
+            const ext = doc.ExtendedData || {};
+            const prod = ext.ProductDefinition || ext.dwd:ProductDefinition || ext["dwd:ProductDefinition"] || ext;
+            const fts = doc.ForecastTimeSteps || ext.ForecastTimeSteps || ext["dwd:ForecastTimeSteps"] || null;
+            if (!fts || !fts.TimeStep) throw new Error("ForecastTimeSteps fehlt");
+            const timeSteps = Array.isArray(fts.TimeStep) ? fts.TimeStep : [fts.TimeStep];
 
-                let kmlText;
-                try {
-                    const zip = new AdmZip(body);
-                    const entry = zip.getEntries().find(e => /\.kml$/i.test(e.entryName));
-                    if (!entry) throw new Error('Keine .kml im KMZ gefunden');
-                    kmlText = entry.getData().toString('utf8');
-                } catch (e) {
-                    return this._fail(e, url, send, done);
-                }
+            const placemark = doc.Placemark || {};
+            const forecast = placemark.Forecast || placemark["dwd:Forecast"] || {};
+            const elements = Array.isArray(forecast) ? forecast : [forecast];
 
-                const stripNS = (name) => String(name).replace(/^.*:/, '');
-                parseString(
-                    kmlText,
-                    { explicitArray: true, trim: true, mergeAttrs: true, tagNameProcessors: [stripNS], attrNameProcessors: [stripNS] },
-                    (perr, kml) => {
-                        if (perr) return this._fail(perr, url, send, done);
+            // Build time-indexed map and merge params
+            const recordsByIso = Object.create(null);
+            timeSteps.forEach(iso => {
+                recordsByIso[iso] = {
+                    ts: toTS(iso),
+                    iso,
+                    // core (common fields we already produced previously)
+                    pressure: null,        // PPP/PPPP
+                    temperature: null,     // TTT
+                    Td: null,              // Td
+                    windDir: null,         // DD
+                    windSpeed: null,       // FF (m/s)
+                    precipitation: null,   // RR (mm/h) if present
+                    visibility: null,      // VV (m)
+                    // … many more params will be merged below as we find them
+                };
+            });
 
-                        try {
-                            const out = this._parseMosmixL(kml);
-                            let rows = out.payload || [];
-
-                            // Filter
-                            const now = Date.now();
-                            if (this.onlyFuture) rows = rows.filter(r => r.ts >= now);
-                            if (this.hoursLimit > 0) {
-                                const until = now + this.hoursLimit * 3600000;
-                                rows = rows.filter(r => r.ts <= until);
-                            }
-
-                            // Einheiten
-                            rows = rows.map(r => {
-                                const rr = { ...r };
-                                if (this.outputCelsius && rr.temperature != null) {
-                                    const c = +(rr.temperature - 273.15).toFixed(2);
-                                    if (!this.coreOnly) rr.temperature_k = rr.temperature;
-                                    rr.temperature = c;
-                                }
-                                if (this.outputHectoPascal && rr.pressure != null) {
-                                    const hpa = +(rr.pressure / 100).toFixed(1);
-                                    if (!this.coreOnly) rr.pressure_pa = rr.pressure;
-                                    rr.pressure = hpa;
-                                }
-                                if (this.outputWindKmh && rr.windSpeed != null) {
-                                    const kmh = +(rr.windSpeed * 3.6).toFixed(1);
-                                    if (!this.coreOnly) rr.wind_ms = rr.windSpeed;
-                                    rr.windSpeed = kmh;
-                                }
-                                if (this.outputVisibilityKm && rr.visibility != null) {
-                                    const km = +(rr.visibility / 1000).toFixed(1);
-                                    if (!this.coreOnly) rr.visibility_m = rr.visibility;
-                                    rr.visibility = km;
-                                }
-
-                                // Berechneter Niederschlagstext MIT Menge
-                                rr.precipitationText = buildPrecipitationText(rr.precipitation, rr.condition);
-
-                                return rr;
-                            });
-
-                            // Kernfelder
-                            if (this.coreOnly) {
-                                rows = rows.map(r => ({
-                                    ts: r.ts, iso: r.iso,
-                                    temperature: r.temperature ?? null,
-                                    windSpeed: r.windSpeed ?? null,
-                                    windDir: r.windDir ?? null,
-                                    precipitation: r.precipitation ?? null,
-                                    precipitationText: r.precipitationText ?? null,
-                                    cloudCover: r.cloudCover ?? null,
-                                    condition: r.condition ?? null,
-                                    pressure: r.pressure ?? null,
-                                    relHumidity: r.relHumidity ?? null,
-                                    visibility: r.visibility ?? null
-                                }));
-                            }
-
-                            const msgOut = {
-                                payload: rows,
-                                station: out.station,   // { id, name }
-                                _meta: {
-                                    url,
-                                    count: rows.length,
-                                    stale: false,
-                                    outputCelsius: this.outputCelsius,
-                                    outputHectoPascal: this.outputHectoPascal,
-                                    outputWindKmh: this.outputWindKmh,
-                                    outputVisibilityKm: this.outputVisibilityKm,
-                                    coreOnly: this.coreOnly
-                                }
-                            };
-
-                            send(msgOut);
-                            this._lastGood = msgOut;
-                            this._ctx.set('lastForecast', msgOut);
-                            this.status({ fill:'green', shape:'dot', text:`OK (L) ${rows.length} Punkte` });
-                            done();
-                        } catch (e) {
-                            this._fail(e, url, send, done);
-                        }
+            // Helper to set value into the record only when time index aligns
+            function applySeries(paramName, values) {
+                if (!values || !Array.isArray(values)) return;
+                values.forEach((v, idx) => {
+                    const iso = timeSteps[idx];
+                    if (!iso || !(iso in recordsByIso)) return;
+                    const rec = recordsByIso[iso];
+                    switch (paramName) {
+                        case "TTT": rec.temperature = Number(v); break;             // K
+                        case "Td":  rec.Td = Number(v); break;                      // K
+                        case "PPP":
+                        case "PPPP":
+                            rec.pressure = Number(v) * 1000;                          // hPa->Pa if PPP given; MOSMIX often uses hPa in some variants.
+                            break;
+                        case "DD":  rec.windDir = Number(v); break;                 // degrees
+                        case "FF":  rec.windSpeed = Number(v); break;               // m/s
+                        case "VV":  rec.visibility = Number(v); break;              // meters
+                        case "RR":  // unified precip rate if directly provided
+                        case "RR1c":
+                        case "RRL1c":
+                            // prefer highest resolution if multiple are present
+                            if (rec.precipitation == null) rec.precipitation = Number(v) || 0;
+                            break;
+                        default:
+                            // keep full element as well (non-core) to not lose information
+                            if (v == null || v === "") return;
+                            rec[paramName] = (Number.isFinite(Number(v)) ? Number(v) : v);
                     }
-                );
+                });
+            }
+
+            // Each element should look like: { name: 'TTT', value: [array aligned with timeSteps] } depending on how xml2js mergedAttrs
+            // Our earlier parser used mergeAttrs:true; keep same:
+            elements.forEach(el => {
+                if (!el || typeof el !== "object") return;
+                const name = el.name || el["@name"] || el["name"];
+                // Values can be in el.value or el.Data or el.timeSeries etc. Our previous mapping stored under "value"
+                let vals = el.value || el.timeSeries || el.values || el.Data || null;
+                if (vals == null) {
+                    // Some MOSMIX put them in el["dwd:value"]
+                    vals = el["dwd:value"] || null;
+                }
+                if (typeof vals === "string") {
+                    // space-separated
+                    vals = vals.trim().split(/\s+/);
+                }
+                if (!Array.isArray(vals)) return;
+                applySeries(String(name || "").trim(), vals);
+            });
+
+            // Convert to array sorted by time
+            const out = Object.values(recordsByIso)
+                .filter(r => r.ts != null)
+                .sort((a, b) => a.ts - b.ts);
+
+            // precipitationText if requested later
+            return {
+                records: out,
+                document: doc
+            };
+        }
+
+        function addComputedFields(records) {
+            if (!node.computePrecipText) return;
+            records.forEach(rec => {
+                const mmh = mmPerHourFromParams(rec);
+                rec.precipitationText = humanPrecip(mmh);
             });
         }
 
-        // Parser für MOSMIX_L (single_stations)
-        _parseMosmixL(kml) {
-            const root = kml.kml?.[0] || kml.kml || kml;
-            const doc = root.Document?.[0];
-            if (!doc) throw new Error('Document fehlt');
+        function filterByOptions(records) {
+            // The node previously offered toggles to include extra fields.
+            // Core are temperature, Td, precipitation; pressure/wind/visibility are gated by checkboxes.
+            if (node.includePressure && node.includeWind && node.includeVisibility) return records; // nothing to do
 
-            const extDoc = doc.ExtendedData?.[0];
-            if (!extDoc) throw new Error('Document/ExtendedData fehlt');
+            return records.map(r => {
+                const keep = {
+                    ts: r.ts, iso: r.iso,
+                    temperature: r.temperature,
+                    Td: r.Td,
+                    precipitation: r.precipitation,
+                    precipitationText: r.precipitationText
+                };
+                if (node.includePressure) keep.pressure = r.pressure;
+                if (node.includeWind) { keep.windDir = r.windDir; keep.windSpeed = r.windSpeed; }
+                if (node.includeVisibility) keep.visibility = r.visibility;
 
-            const prod = extDoc.ProductDefinition?.[0];
-            if (!prod) throw new Error('ProductDefinition fehlt');
+                return keep;
+            });
+        }
 
-            const fts = prod.ForecastTimeSteps?.[0];
-            if (!fts) throw new Error('ForecastTimeSteps fehlt');
+        async function runOnce(msg, fromTimer = false) {
+            try {
+                node.status({});
+                const url = buildUrl(node.stationId);
+                const kmz = await fetchKmz(url, node.timeoutMs);
+                const kmlXml = unzipKml(kmz);
 
-            // Zeitachsen lesen
-            let timeSteps = [];
-            if (Array.isArray(fts.TimeStep) && fts.TimeStep.length) {
-                timeSteps = fts.TimeStep
-                    .map(s => (typeof s === 'object' && s._ != null) ? String(s._).trim()
-                        : (typeof s === 'string' ? s.trim() : ''))
-                    .filter(Boolean);
-            } else if (fts._) {
-                timeSteps = String(fts._).trim().split(/\s+/).filter(Boolean);
-            }
-            if (!timeSteps.length) throw new Error('Keine ForecastTimeSteps gefunden');
+                const kml = await xml2js.parseStringPromise(kmlXml, {
+                    explicitArray: false,
+                    mergeAttrs: true,
+                    normalizeTags: false,
+                    normalize: false,
+                    trim: true
+                });
 
-            // Placemark (eine Station)
-            const placemarks = Array.isArray(doc.Placemark) ? doc.Placemark : (doc.Placemark ? [doc.Placemark] : []);
-            if (!placemarks.length) throw new Error('Placemark fehlt');
-            const placemark = placemarks[0];
+                const norm = normalizeMOSMIX(kml);
+                addComputedFields(norm.records);
+                const pruned = filterByOptions(norm.records);
 
-            // Station-Metadaten
-            const station = {};
-            if (placemark.name?.[0]) station.id = String(placemark.name[0]).trim();
-            if (placemark.description?.[0]) {
-                const raw = String(placemark.description[0]).trim();
-                const m = raw.match(/Station:\s*([^<(]+)/i);
-                station.name = (m ? m[1] : raw).trim();
-            } else {
-                station.name = station.id || '';
-            }
+                const stationName = findStationName(kml) || null;
 
-            const pmExt = placemark.ExtendedData?.[0];
-            if (!pmExt) throw new Error('Placemark/ExtendedData fehlt');
-
-            const forecasts = Array.isArray(pmExt.Forecast) ? pmExt.Forecast : [];
-            if (!forecasts.length) throw new Error('Keine Forecast Einträge gefunden');
-
-            // Serienspeicher
-            const seriesByElement = {};
-            for (const fc of forecasts) {
-                const el = fc.elementName || (fc.$ && fc.$.elementName);
-                if (!el) continue;
-                const raw = (fc.value?.[0]?._ != null) ? fc.value[0]._ :
-                    (typeof fc.value?.[0] === 'string' ? fc.value[0] : '');
-                const values = String(raw || '')
-                    .trim().split(/\s+/).filter(Boolean)
-                    .map(v => (v === 'NaN' ? null : Number(v)));
-                seriesByElement[el] = values;
-            }
-
-            // Einmalig die verfügbaren Elemente loggen
-            if (!this._loggedElementsOnce) {
-                this._loggedElementsOnce = true;
-                try {
-                    this.warn(`[DWD-Forecast] Verfügbare Elemente: ${Object.keys(seriesByElement).sort().join(', ')}`);
-                } catch (_) {}
-            }
-
-            // Zusammenführen pro Zeitschritt
-            const rows = [];
-            for (let i = 0; i < timeSteps.length; i++) {
-                const ts = Date.parse(timeSteps[i]);
-                if (!Number.isFinite(ts)) continue;
-
-                const rec = { ts, iso: new Date(ts).toISOString() };
-
-                for (const el of Object.keys(seriesByElement)) {
-                    const v = seriesByElement[el][i];
-                    switch (el) {
-                        case 'TTT':   rec.temperature   = v; break;     // Kelvin
-                        case 'Td':    rec.dewPoint      = v; break;     // Kelvin
-                        case 'FF':    rec.windSpeed     = v; break;     // m/s
-                        case 'DD':    rec.windDir       = v; break;     // °
-                        case 'PPPP':  rec.pressure      = v; break;     // Pa
-                        case 'N':     rec.cloudCover    = v; break;     // %
-                        case 'VV':    rec.visibility    = v; break;     // m
-                        case 'RR1c':
-                        case 'RRL1':
-                        case 'RR':
-                        case 'RR_1h':
-                        case 'RRc':   rec.precipitation = v; break;     // mm/1h
-                        case 'ww':    rec.condition     = (v == null ? null : String(v)); break;
-                        case 'RELH':  rec.relHumidity   = v; break;     // %
-                        default:      rec[el]           = v; break;     // weitere Elemente mitgeben
+                const out = {
+                    payload: pruned,
+                    station: { id: node.stationId, name: stationName },
+                    _meta: {
+                        url: buildUrl(node.stationId),
+                        count: pruned.length,
+                        stale: false,
+                        fetchedAt: new Date().toISOString(),
+                        fromTimer
                     }
-                }
+                };
 
-                // RELH-Fallback (Magnus/Tetens), falls nicht vorhanden
-                if (rec.relHumidity == null && rec.temperature != null && rec.dewPoint != null) {
-                    const T  = rec.temperature - 273.15; // °C
-                    const Td = rec.dewPoint   - 273.15;  // °C
-                    const a = 17.625, b = 243.04;
-                    const gammaT  = (a * T)  / (b + T);
-                    const gammaTd = (a * Td) / (b + Td);
-                    let rh = 100 * Math.exp(gammaTd - gammaT);
-                    if (Number.isFinite(rh)) {
-                        rh = Math.max(0, Math.min(100, rh));
-                        rec.relHumidity = +rh.toFixed(0);
-                    }
-                }
+                lastGood = out;
+                node.send(out);
+                statusOK(`${pruned.length} rows`);
 
-                rows.push(rec);
+            } catch (err) {
+                const msgText = (err && err.message) ? err.message : String(err);
+                statusWarn(`DWD-Forecast Fehler: ${msgText}`);
+
+                if (node.allowStale && lastGood) {
+                    const stale = Object.assign({}, lastGood, {
+                        _meta: { ...(lastGood._meta || {}), stale: true, error: msgText, deliveredAt: new Date().toISOString() }
+                    });
+                    node.send(stale);
+                } else {
+                    node.send({
+                        payload: [],
+                        station: { id: node.stationId, name: null },
+                        _meta: {
+                            url: buildUrl(node.stationId),
+                            count: 0,
+                            stale: false,
+                            error: msgText,
+                            fetchedAt: new Date().toISOString()
+                        }
+                    });
+                }
             }
+        }
 
-            rows.sort((a,b)=>a.ts-b.ts);
-            return { payload: rows, station };
+        function schedule() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+            const sec = Number(node.autoRefreshSec || 0);
+            if (sec > 0) {
+                pollTimer = setInterval(() => runOnce({}, true), sec * 1000);
+            }
+        }
+
+        node.on("input", function (msg) {
+            runOnce(msg, false);
+        });
+
+        node.on("close", function () {
+            if (pollTimer) clearInterval(pollTimer);
+        });
+
+        // init
+        schedule();
+        if (node.immediateFetch) {
+            setTimeout(() => runOnce({}, false), 200);
+        } else {
+            statusOK("bereit");
         }
     }
 
-    RED.nodes.registerType('dwd-weatherforecast', DwdForecastNode);
+    RED.nodes.registerType("dwd-weatherforecast", DwdWeatherForecastNode);
 };
