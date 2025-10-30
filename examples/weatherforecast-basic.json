@@ -1,0 +1,48 @@
+[
+  {
+    "id": "inj2",
+    "type": "inject",
+    "z": "flow2",
+    "name": "manual trigger",
+    "props": [{"p":"payload"}],
+    "repeat": "",
+    "once": true,
+    "onceDelay": 0.2,
+    "topic": "",
+    "payloadType": "date",
+    "x": 180,
+    "y": 200,
+    "wires": [["dwd2"]]
+  },
+  {
+    "id": "dwd2",
+    "type": "dwd-weatherforecast",
+    "z": "flow2",
+    "name": "DWD Forecast (MOSMIX_L)",
+    "station": "H721",
+    "useMosmixL": true,
+    "includeCore": true,
+    "includeWind": true,
+    "includePressure": true,
+    "includeVisibility": true,
+    "fireOnDeploy": false,
+    "autoRefreshSec": 0,
+    "x": 430,
+    "y": 200,
+    "wires": [["dbg2"]]
+  },
+  {
+    "id": "dbg2",
+    "type": "debug",
+    "z": "flow2",
+    "name": "forecast",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "x": 680,
+    "y": 200,
+    "wires": []
+  }
+]

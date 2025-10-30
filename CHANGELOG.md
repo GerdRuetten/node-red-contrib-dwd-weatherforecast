@@ -3,6 +3,19 @@ Alle Änderungen an diesem Projekt werden in diesem Dokument festgehalten.
 
 Das Format folgt **Keep a Changelog** und **SemVer**.
 
+## [1.0.5] - 2025-10-30
+### Changed
+- `package.json`: Mindestversionen ergänzt
+    - Node-RED: `"node-red.version": ">=3.0.0"`
+    - Node.js/NPM: `"engines": { "node": ">=18.0.0", "npm": ">=9.0.0" }`
+- Beispiele ergänzt: `examples/weatherforecast-basic.json` (für Scorecard „Examples“)
+- Metadata/Files: `files`-Feld enthält jetzt `examples/` und `CHANGELOG.md`
+
+### Security / Maintenance
+- Abhängigkeiten auf aktuelle Ranges geprüft (Scorecard-Hinweis)
+
+[1.0.5]: https://github.com/GerdRuetten/node-red-contrib-dwd-weatherforecast/releases/tag/v1.0.5
+
 ## [1.0.4] - 2025-10-30
 ### Changed
 - Metadaten in `package.json` erweitert (`homepage`, `bugs`, `publishConfig`, `engines`)
