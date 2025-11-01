@@ -1,7 +1,9 @@
 # Changelog
-Alle Änderungen an diesem Projekt werden in diesem Dokument festgehalten.
 
-Das Format folgt **Keep a Changelog** und **SemVer**.
+## [1.0.9] - 2025-11-01
+### Fixed
+- Parser-Fehler „Unexpected token ':'“ in `dwd-weatherforecast.js` behoben
+  (falscher Zugriff auf `dwd:ProductDefinition`).
 
 ## [1.0.8] - 2025-10-30
 ### Changed
