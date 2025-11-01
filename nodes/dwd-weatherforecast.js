@@ -113,7 +113,11 @@ module.exports = function (RED) {
             if (!doc) throw new Error("ProductDefinition fehlt (Document)");
 
             const ext = doc.ExtendedData || {};
-            const prod = ext.ProductDefinition || ext.dwd:ProductDefinition || ext["dwd:ProductDefinition"] || ext;
+            const prod =
+                ext.ProductDefinition ||
+                ext["dwd:ProductDefinition"] ||
+                ext.dwdProductDefinition ||
+                ext;
             const fts = doc.ForecastTimeSteps || ext.ForecastTimeSteps || ext["dwd:ForecastTimeSteps"] || null;
             if (!fts || !fts.TimeStep) throw new Error("ForecastTimeSteps fehlt");
             const timeSteps = Array.isArray(fts.TimeStep) ? fts.TimeStep : [fts.TimeStep];
