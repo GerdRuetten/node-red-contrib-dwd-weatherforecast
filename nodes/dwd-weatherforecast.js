@@ -770,6 +770,8 @@ module.exports = function (RED) {
         node.pressureToHpa = config.pressureToHpa !== false;
         node.visibilityToKm = config.visibilityToKm !== false;
         node.diag = !!config.diag;
+        node.staleOnError = !!config.staleOnError;
+        node.onlyFuture = !!config.onlyFuture;
 
         let refreshTimer = null;
         const setStatus = (text, shape = "dot", color = "blue") =>
@@ -820,6 +822,62 @@ module.exports = function (RED) {
             return { timeSteps: newSteps, params: newParams };
         }
 
+        const ctx = node.context();
+        const CTX_KEY = "lastGood";
+
+        function saveLastGood(series, meta, station) {
+            ctx.set(CTX_KEY, {
+                at: Date.now(),
+                station,
+                series,
+                meta
+            });
+        }
+
+        function sendStaleIfAvailable() {
+            const last = ctx.get(CTX_KEY);
+            if (!last) return false;
+            const out = {
+                payload: last.series,
+                station: { id: last.station, name: last.meta?.stationName || null },
+                _meta: { ...(last.meta||{}), stale: true }
+            };
+            node.status({ fill: "yellow", shape: "ring", text: `stale (${out._meta?.count||out.payload?.length||0})` });
+            node.send(out);
+            return true;
+        }
+
+        function applyOnlyFutureFilter(timeSteps, params, onlyFuture) {
+            if (!onlyFuture) return { timeSteps, params };
+            const now = Date.now();
+
+            // ersten Index >= now finden
+            let start = -1;
+            for (let i = 0; i < timeSteps.length; i++) {
+                if (timeSteps[i] >= now) { start = i; break; }
+            }
+
+            if (start <= 0) {
+                if (start === -1) {
+                    // keine zukünftigen Punkte -> alles leer zurückgeben
+                    const emptyParams = {};
+                    for (const [code, p] of Object.entries(params)) {
+                        emptyParams[code] = { ...p, values: [] };
+                    }
+                    return { timeSteps: [], params: emptyParams };
+                }
+                // start === 0 -> alles ist eh zukünftig
+                return { timeSteps, params };
+            }
+
+            const ts = timeSteps.slice(start);
+            const pr = {};
+            for (const [code, p] of Object.entries(params)) {
+                pr[code] = { ...p, values: p.values.slice(start) };
+            }
+            return { timeSteps: ts, params: pr };
+        }
+
         async function runFetch(msg) {
             const station = (msg && msg.station) || node.station;
             const tpl = (msg && msg.sourceUrl) || node.sourceUrl || DEFAULT_URL_TEMPLATE;
@@ -844,9 +902,24 @@ module.exports = function (RED) {
                 );
 
                 const before = timeSteps.length;
-                const { timeSteps: ts2, params: pa2 } = applyHoursAheadFilter(
+// Effektive Optionen (msg > node)
+                const effectiveHoursAhead = Number(
+                    (msg && msg.hoursAhead != null ? msg.hoursAhead : node.hoursAhead) || 0
+                );
+                const effectiveOnlyFuture =
+                    typeof (msg && msg.onlyFuture) === "boolean" ? msg.onlyFuture : node.onlyFuture;
+
+// 1) erst Vergangenheit kappen
+                let { timeSteps: ts1, params: pa1 } = applyOnlyFutureFilter(
                     timeSteps,
                     params,
+                    effectiveOnlyFuture
+                );
+
+// 2) dann Stundenfenster anwenden
+                let { timeSteps: ts2, params: pa2 } = applyHoursAheadFilter(
+                    ts1,
+                    pa1,
                     effectiveHoursAhead
                 );
                 if (node.diag) {
@@ -854,6 +927,11 @@ module.exports = function (RED) {
                     if (ts2.length && before !== ts2.length) {
                         node.log(`[DWD-Forecast] hoursAhead window: first=${new Date(ts2[0]).toISOString()}, last=${new Date(ts2[ts2.length-1]).toISOString()}`);
                     }
+                }
+
+                if (node.diag) {
+                    node.log(`[DWD-Forecast] onlyFuture=${effectiveOnlyFuture} | hoursAhead=${effectiveHoursAhead}`);
+                    node.log(`[DWD-Forecast] filtered count: ${ts2.length}`);
                 }
 
                 // 🔍 Diagnose: verfügbare Codes ausgeben
@@ -892,9 +970,15 @@ module.exports = function (RED) {
                     },
                 };
 
+                saveLastGood(series, out._meta, station);
+
                 setStatus(`${series.length} Punkte`, "dot", "green");
                 node.send(out);
             } catch (err) {
+                if (node.staleOnError) {
+                    const sent = sendStaleIfAvailable();
+                    if (sent) return; // stale wurde gesendet, kein weiterer Fehlerwurf
+                }
                 node.error(`DWD-Forecast Fehler: ${err && err.message ? err.message : String(err)}`, err);
                 setStatus("Fehler", "ring", "red");
             }

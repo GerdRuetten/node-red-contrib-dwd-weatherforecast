@@ -9,7 +9,7 @@
         <label for="node-input-station"><i class="fa fa-map-marker"></i> DWD Stations-ID</label>
         <input type="text" id="node-input-station" placeholder="z. B. H721 (Köln/Bonn)">
         <div class="form-tips">
-            <a href="https://www.dwd.de/DE/leistungen/opendata/help/wetter/klimadaten_stations_id_csv.html" target="_blank">
+            <a href="https://www.dwd.de/DE/leistungen/klimadatendeutschland/statliste/statlex_html.html" target="_blank">
                 Liste der DWD Stations-IDs anzeigen
             </a>
         </div>
@@ -29,6 +29,7 @@
     <div class="form-row">
         <label for="node-input-fetchOnDeploy"><i class="fa fa-refresh"></i> Beim Deploy abrufen</label>
         <input type="checkbox" id="node-input-fetchOnDeploy">
+        <div class="form-tips">Daten direkt beim DWD abrufen.</div>
     </div>
 
     <div class="form-row">
@@ -41,6 +42,18 @@
         <label for="node-input-maxHours"><i class="fa fa-hourglass-half"></i> Vorlauf (Std.)</label>
         <input type="number" id="node-input-maxHours" min="0" max="240" step="1" placeholder="0 = alle">
         <div class="form-tips">Begrenzt die Vorhersage zeitlich (z. B. 24 = nur die nächsten 24 Stunden).</div>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-staleOnError"><i class="fa fa-undo"></i> Fallback</label>
+        <input type="checkbox" id="node-input-staleOnError">
+        <div class="form-tips">Bei Fehler letzte erfolgreiche Daten senden (stale).</div>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-onlyFuture"><i class="fa fa-filter"></i> Nur zukünftige Zeitpunkte</label>
+        <input type="checkbox" id="node-input-onlyFuture">
+        <div class="form-tips">Historischen Daten werden herausgefiltert.</div>
     </div>
 
     <hr>
@@ -118,7 +131,9 @@
                 windToKmh:   { value: true },
                 pressureToHpa:{ value: true },
                 visibilityToKm:{ value: true },
-                diag:        { value: false }
+                diag:        { value: false },
+                staleOnError: { value: false },
+                onlyFuture: { value: true }
             },
             label: function() {
                 return this.name || "DWD-Weatherforecast";

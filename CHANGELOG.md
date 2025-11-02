@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - 2025-11-02
+### Added
+- **Filter „Nur zukünftige Zeitpunkte“**: entfernt vergangene Zeitstempel, bevor die optionale Stundenbegrenzung greift.
+- Optionaler **Stale-Fallback**: sendet bei Fehlern die letzte erfolgreiche Antwort, wenn aktiviert.
+
 ## [1.1.0] - 2025-11-02
 ### Added
 - Fallback-Berechnung der relativen Luftfeuchte aus `TTT` (Temp) und `Td` (Taupunkt), wenn `rH/RELH` nicht im MOSMIX-KML enthalten ist.
