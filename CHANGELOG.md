@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.2] - 2025-11-02
+### Fixed
+- **Stationsname:** wird automatisch aus `<kml:name>` oder `<kml:description>` gelesen
+
 ## [1.1.1] - 2025-11-02
 ### Added
 - **Filter „Nur zukünftige Zeitpunkte“**: entfernt vergangene Zeitstempel, bevor die optionale Stundenbegrenzung greift.

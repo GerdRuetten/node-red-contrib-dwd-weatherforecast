@@ -89,12 +89,82 @@ module.exports = function (RED) {
         return hits;
     }
 
-    // Station-Name (Placemark > name)
+// Station-Name (Placemark > name / kml:name / description fallback)
+// Replace your existing tryGetStationName with this
     function tryGetStationName(document) {
-        const pms = asArray(document && (document.Placemark || document["kml:Placemark"]));
-        if (!pms.length) return null;
-        const raw = asArray(pms[0].name)[0];
-        return typeof raw === "string" ? raw : null;
+        const asArr = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
+        const looksLikeId = (s) => /^[A-Z]\d{3,4}$/i.test(String(s).trim());
+
+        // get any Placemark (namespaced or not)
+        const placemarks = []
+            .concat(asArr(document && document.Placemark))
+            .concat(asArr(document && document["kml:Placemark"]));
+        if (!placemarks.length) return null;
+
+        const pm = placemarks[0];
+
+        // generic deep text picker for keys that end with ":name" or equal "name"
+        const pickDeepName = (obj) => {
+            const stack = [obj];
+            while (stack.length) {
+                const cur = stack.pop();
+                if (!cur || typeof cur !== "object") continue;
+
+                for (const [k, v] of Object.entries(cur)) {
+                    const isNameKey = k === "name" || /:name$/i.test(k);
+                    if (isNameKey) {
+                        const arr = asArr(v);
+                        for (const a of arr) {
+                            if (typeof a === "string" && a.trim()) {
+                                const s = a.trim();
+                                if (!looksLikeId(s)) return s;
+                            } else if (a && typeof a._ === "string" && a._.trim()) {
+                                const s = a._.trim();
+                                if (!looksLikeId(s)) return s;
+                            } else if (a && typeof a.value === "string" && a.value.trim()) {
+                                const s = a.value.trim();
+                                if (!looksLikeId(s)) return s;
+                            }
+                        }
+                    }
+                    // descend
+                    if (Array.isArray(v)) stack.push(...v);
+                    else if (v && typeof v === "object") stack.push(v);
+                }
+            }
+            return null;
+        };
+
+        // 1) Try any deep name
+        let name = pickDeepName(pm);
+        if (name) return name;
+
+        // 2) Fallback: description/kml:description -> strip tags & cut off "(Hxxx)"
+        const pickText = (node, key) => {
+            const arr = asArr(node && node[key]);
+            if (!arr.length) return null;
+            const raw = arr[0];
+            if (typeof raw === "string") return raw.trim();
+            if (raw && typeof raw._ === "string") return raw._.trim();
+            if (raw && typeof raw.value === "string") return raw.value.trim();
+            return null;
+        };
+
+        const desc =
+            pickText(pm, "kml:description") ||
+            pickText(pm, "description");
+        if (desc) {
+            // strip HTML
+            const plain = desc.replace(/<[^>]*>/g, "").trim();
+            // try "Something (H721)" -> "Something"
+            const m = plain.match(/^(.+?)\s*\([A-Z0-9]{3,4}\)\s*$/i);
+            if (m && m[1] && !looksLikeId(m[1])) return m[1].trim();
+            // otherwise take a reasonable first line chunk that isn't an ID
+            const first = plain.split(/[\r\n]/)[0].trim();
+            if (first && !looksLikeId(first)) return first;
+        }
+
+        return null;
     }
 
     // ---- Parameter-Extraktion: Variante A – ExtendedData/SchemaData/SimpleArrayData inkl. Placemark ----
@@ -659,6 +729,33 @@ module.exports = function (RED) {
                 }
                 if (!doc) throw new Error("KML Document fehlt");
 
+                // --- Diagnose: Placemark-Struktur inspizieren ---
+                if (diagFn && doc) {
+                    const asArray = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
+                    const pms = []
+                        .concat(asArray(doc.Placemark))
+                        .concat(asArray(doc["kml:Placemark"]))
+                        .filter(Boolean);
+
+                    if (pms.length) {
+                        diagFn(`[DWD-Forecast] Placemark keys: ${Object.keys(pms[0]).join(", ")}`);
+                        if (pms[0].ExtendedData) {
+                            const ext = asArray(pms[0].ExtendedData)[0] || {};
+                            diagFn(`[DWD-Forecast] Placemark.ExtendedData keys: ${Object.keys(ext).join(", ")}`);
+                            // Wenn SchemaData vorhanden → auch deren Keys loggen
+                            const schemas = []
+                                .concat(asArray(ext.SchemaData))
+                                .concat(asArray(ext["kml:SchemaData"]))
+                                .filter(Boolean);
+                            if (schemas.length) {
+                                diagFn(`[DWD-Forecast] Placemark.ExtendedData.SchemaData keys: ${Object.keys(schemas[0]).join(", ")}`);
+                            }
+                        }
+                    } else {
+                        diagFn("[DWD-Forecast] Keine Placemark-Knoten gefunden.");
+                    }
+                }
+
                 // TimeSteps
                 let tsStrings = collectTimeStepStrings(doc, []);
                 if (!tsStrings.length) {
@@ -900,6 +997,10 @@ module.exports = function (RED) {
                     "Europe/Berlin",
                     node.diag ? node.log.bind(node) : null
                 );
+
+                if (node.diag) {
+                    node.log(`[DWD-Forecast] StationName resolved: ${stationName ?? "null"}`);
+                }
 
                 const before = timeSteps.length;
 // Effektive Optionen (msg > node)
