@@ -1,327 +1,928 @@
-/**
- * DWD MOSMIX Forecast (KMZ/KML) for Node-RED
- * - Source: MOSMIX_L single_stations
- * - URL pattern: https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{STATION}/kml/MOSMIX_L_LATEST_{STATION}.kmz
- * - UI options reflected in `config`:
- *   - stationId: string (e.g., "H721")
- *   - includePressure: boolean
- *   - includeWind: boolean
- *   - includeVisibility: boolean  (VV)
- *   - computePrecipText: boolean  (derive human-readable precipitation text)
- *   - immediateFetch: boolean     (fetch on deploy)
- *   - autoRefreshSec: number      (poll every N seconds, 0/empty = off)
- *   - allowStale: boolean         (if unzip/parse fails temporarily, reuse last good)
- *   - timeoutMs: number
- */
-
 module.exports = function (RED) {
+    "use strict";
     const axios = require("axios");
     const AdmZip = require("adm-zip");
-    const xml2js = require("xml2js");
+    const { parseStringPromise } = require("xml2js");
     const moment = require("moment-timezone");
+
+    const DEFAULT_URL_TEMPLATE =
+        "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz";
+
+    // -------- utils ----------
+    const asArray = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
+    const safeNumber = (x) => {
+        if (x == null) return null;
+        const n = Number(String(x).trim());
+        return Number.isFinite(n) ? n : null;
+    };
+    const toC = (k) => (k == null ? null : k - 273.15);
+    const toKmh = (ms) => (ms == null ? null : ms * 3.6);
+    const toHpa = (pa) => (pa == null ? null : pa / 100);
+    const toKm = (m) => (m == null ? null : m / 1000);
+
+    const endsWithAny = (key, names) => names.some((n) => key === n || key.endsWith(":" + n));
+
+    // ---- KML helpers ----
+    function getKmlRoot(tree) {
+        if (!tree || typeof tree !== "object") return tree;
+        if (tree.kml && Array.isArray(tree.kml)) return tree.kml[0];
+        if (tree["kml:kml"] && Array.isArray(tree["kml:kml"])) return tree["kml:kml"][0];
+        return tree;
+    }
+
+    function findFirstDocumentNode(obj) {
+        const stack = [obj];
+        while (stack.length) {
+            const cur = stack.pop();
+            if (!cur || typeof cur !== "object") continue;
+            for (const [key, val] of Object.entries(cur)) {
+                if (endsWithAny(key, ["Document"])) {
+                    const arr = asArray(val);
+                    if (arr.length && typeof arr[0] === "object") return arr[0];
+                }
+                if (val && typeof val === "object") {
+                    if (Array.isArray(val)) stack.push(...val);
+                    else stack.push(val);
+                }
+            }
+        }
+        return null;
+    }
+
+    // sammelt Strings aus allen *TimeStep*-Knoten (Namespace-agnostisch)
+    function collectTimeStepStrings(obj, hits = []) {
+        if (!obj || typeof obj !== "object") return hits;
+        for (const [key, val] of Object.entries(obj)) {
+            if (endsWithAny(key, ["TimeStep"])) {
+                for (const v of asArray(val)) {
+                    if (typeof v === "string") hits.push(v);
+                    else if (v && typeof v._ === "string") hits.push(v._);
+                    else if (v && typeof v.value === "string") hits.push(v.value);
+                    else if (v) collectTimeStepStrings(v, hits);
+                }
+            } else if (val && typeof val === "object") {
+                collectTimeStepStrings(val, hits);
+            }
+        }
+        return hits;
+    }
+
+    // Fallback: gx:Track/when
+    function collectTrackWhenStrings(obj, hits = []) {
+        if (!obj || typeof obj !== "object") return hits;
+        for (const [key, val] of Object.entries(obj)) {
+            if (endsWithAny(key, ["Track"])) {
+                for (const tr of asArray(val)) {
+                    const whenArr = tr && tr.when;
+                    if (whenArr) {
+                        for (const w of asArray(whenArr)) {
+                            if (typeof w === "string") hits.push(w);
+                            else if (w && typeof w._ === "string") hits.push(w._);
+                            else if (w && typeof w.value === "string") hits.push(w.value);
+                        }
+                    }
+                }
+            } else if (val && typeof val === "object") {
+                collectTrackWhenStrings(val, hits);
+            }
+        }
+        return hits;
+    }
+
+    // Station-Name (Placemark > name)
+    function tryGetStationName(document) {
+        const pms = asArray(document && (document.Placemark || document["kml:Placemark"]));
+        if (!pms.length) return null;
+        const raw = asArray(pms[0].name)[0];
+        return typeof raw === "string" ? raw : null;
+    }
+
+    // ---- Parameter-Extraktion: Variante A – ExtendedData/SchemaData/SimpleArrayData inkl. Placemark ----
+    function extractParamsFromSchemaData(document, diagFn) {
+        const params = {};
+        if (!document) return params;
+
+        function collectAllExtendedData(obj) {
+            let result = []
+                .concat(asArray(obj.ExtendedData))
+                .concat(asArray(obj["kml:ExtendedData"]))
+                .concat(asArray(obj["dwd:ExtendedData"]));
+            const placemarks = []
+                .concat(asArray(obj.Placemark))
+                .concat(asArray(obj["kml:Placemark"]));
+            for (const pm of placemarks) {
+                if (!pm) continue;
+                result = result.concat(
+                    asArray(pm.ExtendedData),
+                    asArray(pm["kml:ExtendedData"]),
+                    asArray(pm["dwd:ExtendedData"])
+                );
+            }
+            return result.filter(Boolean);
+        }
+
+        const ext = collectAllExtendedData(document);
+        const simpleArrayNodes = [];
+
+        const pushIfSimpleArray = (obj) => {
+            if (!obj || typeof obj !== "object") return;
+            for (const [key, val] of Object.entries(obj)) {
+                if (endsWithAny(key, ["SimpleArrayData"])) {
+                    for (const sad of asArray(val)) simpleArrayNodes.push(sad);
+                } else if (val && typeof val === "object") {
+                    if (Array.isArray(val)) val.forEach(pushIfSimpleArray);
+                    else pushIfSimpleArray(val);
+                }
+            }
+        };
+
+        for (const e of ext) {
+            if (!e) continue;
+            pushIfSimpleArray(e);
+            const schemas = []
+                .concat(asArray(e.SchemaData))
+                .concat(asArray(e["kml:SchemaData"]))
+                .concat(asArray(e["dwd:SchemaData"]));
+            for (const s of schemas) pushIfSimpleArray(s);
+        }
+
+        for (const node of simpleArrayNodes) {
+            const code = (node.name || node.id || node.parameterId || "").toString().trim();
+            if (!code) continue;
+            const unit = node.u || node.unit || null;
+
+            const valueStrings = [];
+            for (const [k, v] of Object.entries(node)) {
+                if (endsWithAny(k, ["value"])) {
+                    for (const one of asArray(v)) {
+                        if (typeof one === "string") valueStrings.push(one);
+                        else if (one && typeof one._ === "string") valueStrings.push(one._);
+                    }
+                }
+            }
+            if (!valueStrings.length) continue;
+
+            const numbers = valueStrings
+                .join(" ")
+                .trim()
+                .split(/\s+/)
+                .map((s) => safeNumber(s));
+
+            if (numbers.length) {
+                params[code] = { code, unit, values: numbers };
+            }
+        }
+
+        if (diagFn) diagFn(`[DWD-Forecast] gefundene Parameter (SchemaData inkl. Placemark): ${Object.keys(params).length}`);
+        return params;
+    }
+
+    // ---- Parameter-Extraktion: Variante B – Forecast/TimeSeries/Parameter/values inkl. Placemark ----
+    function extractParamsFromForecast(document, diagFn) {
+        const params = {};
+        if (!document) return params;
+
+        function collectAllExtendedData(obj) {
+            let result = []
+                .concat(asArray(obj.ExtendedData))
+                .concat(asArray(obj["kml:ExtendedData"]))
+                .concat(asArray(obj["dwd:ExtendedData"]));
+            const placemarks = []
+                .concat(asArray(obj.Placemark))
+                .concat(asArray(obj["kml:Placemark"]));
+            for (const pm of placemarks) {
+                if (!pm) continue;
+                result = result.concat(
+                    asArray(pm.ExtendedData),
+                    asArray(pm["kml:ExtendedData"]),
+                    asArray(pm["dwd:ExtendedData"])
+                );
+            }
+            return result.filter(Boolean);
+        }
+
+        const extArr = collectAllExtendedData(document);
+
+        let ts0 = null;
+        for (const ext of extArr) {
+            if (!ext) continue;
+            const fc = ext["dwd:Forecast"] || ext.Forecast;
+            const fc0 = asArray(fc)[0];
+            const tss = fc0 && (fc0["dwd:TimeSeries"] || fc0.TimeSeries);
+            ts0 = asArray(tss)[0];
+            if (ts0) break;
+        }
+
+        if (!ts0) {
+            if (diagFn) diagFn("[DWD-Forecast] Forecast/TimeSeries nicht gefunden (ok, wenn SchemaData vorhanden).");
+            return params;
+        }
+
+        const keys = Object.keys(ts0).filter((k) => endsWithAny(k, ["Parameter"]));
+        for (const k of keys) {
+            for (const p of asArray(ts0[k])) {
+                const code = (p.id || p.name || "").toString().trim();
+                if (!code) continue;
+                const unit = p.unit || p.u || null;
+                const values = [];
+
+                const vNode =
+                    p["dwd:values"] ||
+                    p.values ||
+                    p["dwd:value"] ||
+                    p.value;
+                if (vNode) {
+                    for (const vv of asArray(vNode)) {
+                        if (typeof vv === "string") {
+                            values.push(...String(vv).trim().split(/\s+/).map(safeNumber));
+                        } else if (vv && typeof vv._ === "string") {
+                            values.push(...String(vv._).trim().split(/\s+/).map(safeNumber));
+                        } else if (vv && typeof vv.value === "string") {
+                            values.push(...String(vv.value).trim().split(/\s+/).map(safeNumber));
+                        }
+                    }
+                }
+                if (values.length) params[code] = { code, unit, values };
+            }
+        }
+
+        if (diagFn) diagFn(`[DWD-Forecast] gefundene Parameter (XML inkl. Placemark): ${Object.keys(params).length}`);
+        return params;
+    }
+
+    // ---- Parameter-Extraktion: Variante B2 – dwd:Forecast (elementName + values) ----
+// ---- Parameter-Extraktion: Variante B2 – dwd:Forecast (Attribut dwd:elementName + <dwd:value>...) ----
+    function extractParamsFromDwdForecast(document, diagFn) {
+        const params = {};
+        if (!document) return params;
+
+        function collectAllExtendedData(obj) {
+            let result = []
+                .concat(asArray(obj.ExtendedData))
+                .concat(asArray(obj["kml:ExtendedData"]))
+                .concat(asArray(obj["dwd:ExtendedData"]));
+            const placemarks = []
+                .concat(asArray(obj.Placemark))
+                .concat(asArray(obj["kml:Placemark"]));
+            for (const pm of placemarks) {
+                if (!pm) continue;
+                result = result.concat(
+                    asArray(pm.ExtendedData),
+                    asArray(pm["kml:ExtendedData"]),
+                    asArray(pm["dwd:ExtendedData"])
+                );
+            }
+            return result.filter(Boolean);
+        }
+
+        const allExt = collectAllExtendedData(document);
+        let found = 0;
+
+        // Liest Attributwerte (mergeAttrs:true macht sie zu einfachen Properties)
+        function attrOf(node, names) {
+            for (const name of names) {
+                const v = node && node[name];
+                if (typeof v === "string") return v.trim();
+                // xml2js kann Attribute auch mal als 1-Element-Array liefern
+                if (Array.isArray(v) && typeof v[0] === "string") return v[0].trim();
+            }
+            return null;
+        }
+
+        // Liest Text aus Kindelementen (array/string/_)
+        function textBlocks(node, names) {
+            const out = [];
+            for (const name of names) {
+                const arr = asArray(node && (node[name] || node[`dwd:${name}`] || node[`kml:${name}`]));
+                for (const it of arr) {
+                    if (typeof it === "string") out.push(it);
+                    else if (it && typeof it._ === "string") out.push(it._);
+                }
+            }
+            return out;
+        }
+
+        function harvestForecast(obj) {
+            if (!obj || typeof obj !== "object") return;
+            for (const [key, val] of Object.entries(obj)) {
+                if (endsWithAny(key, ["Forecast"])) {
+                    for (const fc of asArray(val)) {
+                        // 1) Code aus Attribut dwd:elementName oder elementName
+                        let code =
+                            attrOf(fc, ["dwd:elementName", "elementName", "name", "id"]) ||
+                            null;
+                        if (!code) {
+                            // gelegentlich liegt elementName als Kindelement vor (Fallback)
+                            const tn = textBlocks(fc, ["elementName", "name", "id"]);
+                            if (tn.length) code = tn[0].trim();
+                        }
+                        if (!code) continue;
+
+                        // 2) Werte: bevorzugt <dwd:value>...</dwd:value>, alternativ <dwd:values>...</dwd:values>
+                        const blocks = []
+                            .concat(textBlocks(fc, ["value"]))
+                            .concat(textBlocks(fc, ["values"])); // falls es doch values gibt
+
+                        const numbers = blocks
+                            .join(" ")
+                            .trim()
+                            .split(/\s+/)
+                            .map(safeNumber)
+                            .filter((n) => n != null);
+
+                        if (numbers.length) {
+                            params[code] = { code, unit: null, values: numbers };
+                            found++;
+                        }
+                    }
+                } else if (val && typeof val === "object") {
+                    if (Array.isArray(val)) val.forEach(harvestForecast);
+                    else harvestForecast(val);
+                }
+            }
+        }
+
+        for (const e of allExt) harvestForecast(e);
+
+        if (diagFn) diagFn(`[DWD-Forecast] gefundene Parameter (dwd:Forecast attr+value): ${found}`);
+        return params;
+    }
+
+    // ---- Parameter-Extraktion: Variante C – Regex-Fallback auf KML-String ----
+    function extractParamsByRegex(kmlStr, diagFn) {
+        const params = {};
+        if (!kmlStr || typeof kmlStr !== "string") return params;
+
+        // SimpleArrayData name="CODE" ... <value>...</value>
+        const simpleRe =
+            /<[^>]*SimpleArrayData[^>]*\bname="([^"]+)"[^>]*>([\s\S]*?)<\/[^>]*SimpleArrayData>/g;
+        let m;
+        while ((m = simpleRe.exec(kmlStr))) {
+            const code = m[1].trim();
+            const block = m[2];
+            const values = [];
+            const valRe = /<[^>]*value[^>]*>([\s\S]*?)<\/[^>]*value>/g;
+            let mv;
+            while ((mv = valRe.exec(block))) {
+                const nums = mv[1].trim().split(/\s+/).map(safeNumber);
+                values.push(...nums);
+            }
+            if (code && values.length) {
+                params[code] = { code, unit: null, values };
+            }
+        }
+
+        // dwd:Parameter id="CODE" ... <dwd:values>...</dwd:values>
+        const paramRe =
+            /<dwd:Parameter[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/dwd:Parameter>/g;
+        while ((m = paramRe.exec(kmlStr))) {
+            const code = m[1].trim();
+            const block = m[2];
+            const values = [];
+            const vr = /<(?:dwd:)?values[^>]*>([\s\S]*?)<\/(?:dwd:)?values>/g;
+            let mv;
+            while ((mv = vr.exec(block))) {
+                const nums = mv[1].trim().split(/\s+/).map(safeNumber);
+                values.push(...nums);
+            }
+            if (code && values.length) {
+                if (!params[code]) params[code] = { code, unit: null, values };
+            }
+        }
+
+        // dwd:Forecast mit <elementName>CODE</elementName><values>...</values>
+        const fcChildRe = /<dwd:Forecast\b[^>]*>([\s\S]*?)<\/dwd:Forecast>/gi;
+        let mf;
+        while ((mf = fcChildRe.exec(kmlStr))) {
+            const block = mf[1];
+            const nameM = block.match(/<dwd:elementName[^>]*>([\s\S]*?)<\/dwd:elementName>/i);
+            const valuesM = block.match(/<(?:dwd:)?values[^>]*>([\s\S]*?)<\/(?:dwd:)?values>/i);
+            if (!nameM || !valuesM) continue;
+            const code = nameM[1].trim();
+            const values = valuesM[1].trim().split(/\s+/).map(safeNumber);
+            if (code && values.length && !params[code]) {
+                params[code] = { code, unit: null, values };
+            }
+        }
+
+// 3c) <dwd:Forecast dwd:elementName="CODE"> ... <dwd:value>...</dwd:value> ...
+        const fcAttrRe = /<dwd:Forecast\b[^>]*\bdwd:elementName="([^"]+)"[^>]*>([\s\S]*?)<\/dwd:Forecast>/gi;
+        let mfa;
+        while ((mfa = fcAttrRe.exec(kmlStr))) {
+            const code = mfa[1].trim();
+            const block = mfa[2];
+            // sammle ALLE <dwd:value>-Blöcke
+            const values = [];
+            const valTagRe = /<(?:dwd:)?value\b[^>]*>([\s\S]*?)<\/(?:dwd:)?value>/gi;
+            let mv;
+            while ((mv = valTagRe.exec(block))) {
+                values.push(
+                    ...mv[1].trim().split(/\s+/).map(safeNumber).filter((n) => n != null)
+                );
+            }
+            if (code && values.length && !params[code]) {
+                params[code] = { code, unit: null, values };
+            }
+        }
+
+        if (diagFn) diagFn(`[DWD-Forecast] gefundene Parameter (Regex): ${Object.keys(params).length}`);
+        return params;
+    }
+
+    // ---- Parameter-Extraktion: Variante D – Generischer Tiefenscan ----
+    function extractParamsByGenericWalk(root, diagFn) {
+        const params = {};
+        if (!root || typeof root !== "object") return params;
+
+        const tryAdd = (obj) => {
+            if (!obj || typeof obj !== "object") return false;
+
+            let code =
+                (typeof obj.name === "string" && obj.name.trim()) ||
+                (typeof obj.id === "string" && obj.id.trim()) ||
+                (typeof obj.elementName === "string" && obj.elementName.trim()) ||
+                (typeof obj["dwd:elementName"] === "string" && obj["dwd:elementName"].trim()) ||
+                null;
+
+            if (!code) {
+                if (obj.name && typeof obj.name === "object" && typeof obj.name._ === "string") code = obj.name._.trim();
+                if (!code && obj.elementName && typeof obj.elementName === "object" && typeof obj.elementName._ === "string") code = obj.elementName._.trim();
+                if (!code && obj["dwd:elementName"] && typeof obj["dwd:elementName"] === "object" && typeof obj["dwd:elementName"]._ === "string") code = obj["dwd:elementName"]._.trim();
+            }
+
+            const rawBlocks = [];
+            for (const [k, v] of Object.entries(obj)) {
+                if (/(^|:)values$/i.test(k) || /^value$/i.test(k) || /:value$/i.test(k)) {
+                    for (const one of (Array.isArray(v) ? v : [v])) {
+                        if (typeof one === "string") rawBlocks.push(one);
+                        else if (one && typeof one._ === "string") rawBlocks.push(one._);
+                    }
+                }
+            }
+
+            if (code && rawBlocks.length) {
+                const numbers = rawBlocks
+                    .join(" ")
+                    .trim()
+                    .split(/\s+/)
+                    .map((s) => {
+                        const n = Number(String(s).trim());
+                        return Number.isFinite(n) ? n : null;
+                    })
+                    .filter((n) => n !== null);
+
+                if (numbers.length) {
+                    if (!params[code]) params[code] = { code, unit: obj.u || obj.unit || null, values: [] };
+                    params[code].values.push(...numbers);
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        const stack = [root];
+        while (stack.length) {
+            const cur = stack.pop();
+            if (!cur || typeof cur !== "object") continue;
+
+            tryAdd(cur);
+
+            for (const val of Object.values(cur)) {
+                if (Array.isArray(val)) {
+                    for (const it of val) stack.push(it);
+                } else if (val && typeof val === "object") {
+                    stack.push(val);
+                }
+            }
+        }
+
+        if (diagFn) diagFn(`[DWD-Forecast] gefundene Parameter (GenericWalk): ${Object.keys(params).length}`);
+        return params;
+    }
+
+    // ---- Normalisierung auf Records ----
+    function normalizeRecords(timeSteps, params, cfg) {
+        const getFirst = (codes, i) => {
+            for (const code of codes) {
+                const p = params[code];
+                if (p && p.values[i] !== undefined) return p.values[i];
+            }
+            return null;
+        };
+
+        // Kelvin helpers
+        const KtoC = (k) => (k == null ? null : k - 273.15);
+
+        // Magnus constants (over water)
+        const A = 17.625, B = 243.04; // temperature in °C
+
+        const out = [];
+        for (let i = 0; i < timeSteps.length; i++) {
+            const ts = timeSteps[i];
+            const iso = new Date(ts).toISOString();
+
+            // raw values (as provided by MOSMIX)
+            const T_K   = getFirst(["TTT"], i);     // air temperature [K]
+            const Td_K  = getFirst(["Td"], i);      // dew point [K]
+            let   RH    = getFirst(["rH","RELH"], i); // relative humidity [%] if provided
+
+            let windSpeed   = getFirst(["FF"], i);      // m/s
+            let windDir     = getFirst(["DD"], i);      // °
+            let pressurePa  = getFirst(["PPPP"], i);    // Pa
+            let visibilityM = getFirst(["VV"], i);      // m
+            let cloudCover  = getFirst(["Neff","neff"], i); // %
+            let precip      = getFirst(["RR1c","RR1o1"], i); // mm/h
+
+            // Compute RH from T and Td if missing
+            if ((RH == null || !Number.isFinite(RH)) && T_K != null && Td_K != null) {
+                const T_C  = KtoC(T_K);
+                const Td_C = KtoC(Td_K);
+                if (Number.isFinite(T_C) && Number.isFinite(Td_C)) {
+                    const gamma = (xC) => (A * xC) / (B + xC);
+                    const es  = Math.exp(gamma(T_C));
+                    const e   = Math.exp(gamma(Td_C));
+                    RH = Math.max(0, Math.min(100, 100 * (e / es)));
+                }
+            }
+
+            // Build record (convert units if configured)
+            let temperature = T_K;
+            let pressure    = pressurePa;
+            let visibility  = visibilityM;
+
+            if (cfg.toC && temperature != null) temperature = +KtoC(temperature).toFixed(2);
+            if (cfg.windToKmh && windSpeed != null) windSpeed = +(windSpeed * 3.6).toFixed(2);
+            if (cfg.pressureToHpa && pressure != null) pressure = Math.round(pressure / 100);
+            if (cfg.visibilityToKm && visibility != null) visibility = +(visibility / 1000).toFixed(1);
+
+            const rec = {
+                ts, iso,
+                temperature: temperature ?? null,
+                windSpeed: windSpeed ?? null,
+                windDir: windDir ?? null,
+                pressure: pressure ?? null,
+                relHumidity: (RH != null && Number.isFinite(RH)) ? Math.round(RH) : null,
+                visibility: visibility ?? null,
+                cloudCover: cloudCover ?? null,
+                precipitation: precip ?? null,
+                precipitationText: null,
+            };
+
+            if (rec.precipitation != null) {
+                const kind = "Regen";
+                const intensity = rec.precipitation < 0.3 ? "leicht"
+                    : rec.precipitation < 1.0 ? "mäßig"
+                        : "stark";
+                rec.precipitationText = `${kind} (${intensity}) – ${rec.precipitation} mm/h`;
+            }
+
+            out.push(rec);
+        }
+
+        if (cfg.coreOnly) {
+            const core = [
+                "ts","iso",
+                "temperature","windSpeed","windDir","pressure",
+                "relHumidity","visibility","precipitation","precipitationText","cloudCover"
+            ];
+            return out.map((r) => {
+                const o = {};
+                for (const k of core) o[k] = r[k] ?? null;
+                return o;
+            });
+        }
+        return out;
+    }
+
+    // ---- HTTP ----
+    async function httpGetArrayBuffer(url) {
+        const res = await axios.get(url, { responseType: "arraybuffer", validateStatus: () => true });
+        if (res.status !== 200) {
+            const e = new Error(`HTTP ${res.status}`);
+            e.status = res.status;
+            throw e;
+        }
+        return res.data;
+    }
+
+    // ---- Fetch & Parse ----
+    async function fetchAndParseMosmix(url, tz, diagFn) {
+        let lastErr;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const buf = await httpGetArrayBuffer(url);
+                const zip = new AdmZip(buf);
+                const entries = zip.getEntries();
+                if (!entries || !entries.length) throw new Error("KMZ leer");
+
+                const kmlEntry = entries.find((e) => e.entryName.toLowerCase().endsWith(".kml")) || entries[0];
+                const kmlStr = kmlEntry.getData().toString("utf8");
+
+                if (diagFn) {
+                    diagFn("[DWD-Forecast] KMZ KML-Entries:");
+                    entries
+                        .filter((e) => e.entryName.toLowerCase().endsWith(".kml"))
+                        .forEach((e) => diagFn(` - ${e.entryName} (${e.header.size} bytes)`));
+                    diagFn(`[DWD-Forecast] KML picked: ${kmlEntry.entryName} (${kmlEntry.header.size} bytes)`);
+                }
+
+                // *** Diagnose-Zähler + Sample-Blöcke auf KML-String ***
+                if (diagFn) {
+                    const count = (re) => ((kmlStr.match(re) || []).length);
+                    diagFn(`[DWD-Forecast] Count <SimpleArrayData>: ${count(/<([a-zA-Z0-9_]+:)?SimpleArrayData\b/gi)}`);
+                    diagFn(`[DWD-Forecast] Count <Parameter id="...">: ${count(/<([a-zA-Z0-9_]+:)?Parameter\b[^>]*\bid="/gi)}`);
+                    diagFn(`[DWD-Forecast] Count <elementName>: ${count(/<([a-zA-Z0-9_]+:)?elementName\b/gi)}`);
+                    diagFn(`[DWD-Forecast] Count <values>: ${count(/<([a-zA-Z0-9_]+:)?values\b/gi)}`);
+                    diagFn(`[DWD-Forecast] Count <value>: ${count(/<([a-zA-Z0-9_]+:)?value\b/gi)}`);
+
+                    const m1 = kmlStr.match(/<([a-zA-Z0-9_]+:)?SimpleArrayData\b[\s\S]*?<\/\1?SimpleArrayData>/i);
+                    if (m1) diagFn(`[DWD-Forecast] Sample SimpleArrayData: ${m1[0].slice(0, 500).replace(/\s+/g,' ')}…`);
+                    const m2 = kmlStr.match(/<([a-zA-Z0-9_]+:)?Parameter\b[^>]*\bid="[^"]+"[\s\S]*?<\/\1?Parameter>/i);
+                    if (m2) diagFn(`[DWD-Forecast] Sample Parameter: ${m2[0].slice(0, 500).replace(/\s+/g,' ')}…`);
+                    const m3 = kmlStr.match(/<([a-zA-Z0-9_]+:)?Forecast\b[\s\S]*?<\/\1?Forecast>/i);
+                    if (m3) diagFn(`[DWD-Forecast] Sample Forecast: ${m3[0].slice(0, 500).replace(/\s+/g,' ')}…`);
+                }
+
+                const kml = await parseStringPromise(kmlStr, {
+                    explicitArray: true,
+                    preserveChildrenOrder: false,
+                    mergeAttrs: true,
+                });
+
+                const kmlRoot = getKmlRoot(kml);
+                const doc = findFirstDocumentNode(kmlRoot) || findFirstDocumentNode(kml);
+
+                if (diagFn) {
+                    const topKey = Object.keys(kml)[0] || "kml:kml";
+                    diagFn(`[DWD-Forecast] KML Top-Level Keys: ${topKey}`);
+                    diagFn(`[DWD-Forecast] Document keys: ${doc ? Object.keys(doc).join(", ") : "(none)"}`);
+                }
+                if (!doc) throw new Error("KML Document fehlt");
+
+                // TimeSteps
+                let tsStrings = collectTimeStepStrings(doc, []);
+                if (!tsStrings.length) {
+                    const w = collectTrackWhenStrings(doc, []);
+                    if (diagFn) diagFn(`[DWD-Forecast] Fallback when: ${w.length} Treffer`);
+                    tsStrings = w;
+                }
+                if (!tsStrings.length) {
+                    const whenRe = /<\w*:TimeStep>([^<]+)<\/\w*:TimeStep>/g;
+                    const tmp = [];
+                    let m;
+                    while ((m = whenRe.exec(kmlStr))) tmp.push(m[1]);
+                    if (diagFn) diagFn(`[DWD-Forecast] Regex-Fallback TimeSteps: ${tmp.length} Treffer`);
+                    tsStrings = tmp;
+                }
+
+                const timeSteps = tsStrings
+                    .map((s) => moment.tz(String(s), tz).valueOf())
+                    .filter((v) => Number.isFinite(v));
+
+                if (diagFn) {
+                    diagFn(`[DWD-Forecast] TimeSteps gesamt: ${tsStrings.length}`);
+                    diagFn(`[DWD-Forecast] TimeSteps nach Parse: ${timeSteps.length}`);
+                    if (tsStrings.length) {
+                        diagFn(`[DWD-Forecast] TimeStep-Beispiele (roh): ${tsStrings.slice(0, 5).join(", ")}`);
+                    }
+                }
+                if (!timeSteps.length) throw new Error("ForecastTimeSteps leer");
+
+                // Params: A) SchemaData, B) Forecast/TimeSeries, B2) dwd:Forecast(child), C) Regex-Fallback, D) Walk
+                const paramsA = extractParamsFromSchemaData(doc, diagFn);
+                let params = { ...paramsA };
+
+                if (!Object.keys(params).length) {
+                    const paramsB = extractParamsFromForecast(doc, diagFn);
+                    params = { ...params, ...paramsB };
+                }
+
+                if (!Object.keys(params).length) {
+                    const paramsB2 = extractParamsFromDwdForecast(doc, diagFn);
+                    params = { ...params, ...paramsB2 };
+                }
+
+                if (!Object.keys(params).length) {
+                    const paramsC = extractParamsByRegex(kmlStr, diagFn);
+                    params = { ...params, ...paramsC };
+                }
+
+                if (!Object.keys(params).length) {
+                    const paramsD = extractParamsByGenericWalk(doc, diagFn);
+                    params = { ...params, ...paramsD };
+                }
+
+                // *** Harte, gezielte MOSMIX-Fallback-Codes (wenn oben alles 0 ergab) ***
+                if (!Object.keys(params).length) {
+                    const wanted = ["TTT","FF","DD","PPPP","RELH","VV","Neff","neff","RR1c","RR1o1"];
+                    for (const code of wanted) {
+                        const reBlock = new RegExp(`<([a-zA-Z0-9_]+:)?Parameter\\b[^>]*\\bid="${code}"[^>]*>([\\s\\S]*?)<\\/\\1?Parameter>`, "i");
+                        const mb = kmlStr.match(reBlock);
+                        if (!mb) continue;
+                        const block = mb[2];
+                        const mv = block.match(/<([a-zA-Z0-9_]+:)?values\b[^>]*>([\s\S]*?)<\/\1?values>/i);
+                        if (!mv) continue;
+                        const nums = mv[2].trim().split(/\s+/).map((s) => Number(s)).filter((n) => Number.isFinite(n));
+                        if (nums.length) params[code] = { code, unit: null, values: nums };
+                    }
+                    if (diagFn) diagFn(`[DWD-Forecast] HARDCODE-Fallback Param-Codes: ${Object.keys(params).join(", ")}`);
+                }
+
+                if (diagFn) diagFn(`[DWD-Forecast] gefundene Parameter (gesamt): ${Object.keys(params).length}`);
+                if (diagFn && Object.keys(params).length) {
+                    const sampleCodes = Object.keys(params).slice(0, 20).join(", ");
+                    diagFn(`[DWD-Forecast] Param-Codes (Auszug): ${sampleCodes}`);
+                }
+
+                // Länge angleichen
+                for (const p of Object.values(params)) {
+                    if (p.values.length > timeSteps.length) p.values = p.values.slice(0, timeSteps.length);
+                    if (p.values.length < timeSteps.length)
+                        p.values = p.values.concat(Array(timeSteps.length - p.values.length).fill(null));
+                }
+
+                const stationName = tryGetStationName(doc);
+                return { timeSteps, params, stationName, kmlStr };
+            } catch (e) {
+                lastErr = e;
+                if (diagFn) diagFn(`[DWD-Forecast] Versuch ${attempt + 1} fehlgeschlagen: ${e.message}`);
+                if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
+            }
+        }
+        throw lastErr || new Error("Unbekannter Fehler");
+    }
 
     function DwdWeatherForecastNode(config) {
         RED.nodes.createNode(this, config);
         const node = this;
 
-        node.stationId = (config.stationId || "").trim();     // e.g. "H721"
-        node.includePressure = !!config.includePressure;
-        node.includeWind = !!config.includeWind;
-        node.includeVisibility = !!config.includeVisibility;
-        node.computePrecipText = !!config.computePrecipText;
+        node.station = (config.station || "").toUpperCase().trim();
+        node.sourceUrl = (config.sourceUrl || DEFAULT_URL_TEMPLATE).trim();
 
-        node.immediateFetch = !!config.immediateFetch;
-        node.autoRefreshSec = Number(config.autoRefreshSec || 0);
-        node.allowStale = !!config.allowStale;
+        node.fetchOnDeploy = !!config.fetchOnDeploy;
+        node.autoRefresh = Number(config.autoRefresh || 0);
+        node.hoursAhead = Number(
+            (config.hoursAhead != null ? config.hoursAhead : config.maxHours) || 0
+        );
+        node.coreOnly = !!config.coreOnly;
+        node.toC = config.toC !== false;
+        node.windToKmh = config.windToKmh !== false;
+        node.pressureToHpa = config.pressureToHpa !== false;
+        node.visibilityToKm = config.visibilityToKm !== false;
+        node.diag = !!config.diag;
 
-        node.timeoutMs = Number(config.timeoutMs || 20000);
+        let refreshTimer = null;
+        const setStatus = (text, shape = "dot", color = "blue") =>
+            node.status({ fill: color, shape, text });
 
-        let pollTimer = null;
-        let lastGood = null;
-
-        function statusOK(text) { node.status({ fill: "green", shape: "dot", text }); }
-        function statusWarn(text) { node.status({ fill: "yellow", shape: "ring", text }); }
-        function statusErr(text) { node.status({ fill: "red", shape: "dot", text }); }
-
-        function buildUrl(station) {
-            const s = (station || node.stationId || "").toUpperCase();
-            return `https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/${s}/kml/MOSMIX_L_LATEST_${s}.kmz`;
+        function buildUrl(station, tpl) {
+            const st = (station || "").toUpperCase().trim();
+            if (!st) throw new Error("Stations-ID fehlt");
+            return (tpl || DEFAULT_URL_TEMPLATE).replace(/{station}/gi, st);
         }
 
-        async function fetchKmz(url, timeoutMs) {
-            const res = await axios.get(url, {
-                timeout: timeoutMs || 20000,
-                responseType: "arraybuffer"
-            });
-            if (res.status < 200 || res.status >= 300) {
-                throw new Error(`HTTP ${res.status} for ${url}`);
+        // begrenzt timeSteps/params auf das Zeitfenster [now, now + hoursAhead h]
+        function applyHoursAheadFilter(timeSteps, params, hoursAhead) {
+            const now = Date.now();
+            if (!hoursAhead || !Number.isFinite(hoursAhead) || hoursAhead <= 0) {
+                return { timeSteps, params };
             }
-            return Buffer.from(res.data);
+            const end = now + hoursAhead * 3600 * 1000;
+
+            let firstIdx = -1, lastIdx = -1;
+            for (let i = 0; i < timeSteps.length; i++) {
+                const t = timeSteps[i];
+                if (t >= now && t <= end) {
+                    if (firstIdx === -1) firstIdx = i;
+                    lastIdx = i;
+                }
+            }
+
+            if (firstIdx === -1) {
+                for (let i = 0; i < timeSteps.length; i++) {
+                    const t = timeSteps[i];
+                    if (t >= now) { firstIdx = i; break; }
+                }
+                if (firstIdx !== -1) {
+                    lastIdx = Math.min(timeSteps.length - 1, firstIdx + Math.max(0, Math.ceil(hoursAhead)) - 1);
+                }
+            }
+
+            if (firstIdx === -1 || lastIdx === -1 || lastIdx < firstIdx) {
+                return { timeSteps, params };
+            }
+
+            const newSteps = timeSteps.slice(firstIdx, lastIdx + 1);
+            const newParams = {};
+            for (const [code, p] of Object.entries(params)) {
+                newParams[code] = { ...p, values: p.values.slice(firstIdx, lastIdx + 1) };
+            }
+            return { timeSteps: newSteps, params: newParams };
         }
 
-        function unzipKml(kmzBuffer) {
-            const zip = new AdmZip(kmzBuffer);
-            const entries = zip.getEntries();
-            const kmlEntry = entries.find(e => e.entryName.toLowerCase().endsWith(".kml"));
-            if (!kmlEntry) throw new Error("KML Document fehlt");
-            const xml = kmlEntry.getData().toString("utf-8");
-            return xml;
-        }
+        async function runFetch(msg) {
+            const station = (msg && msg.station) || node.station;
+            const tpl = (msg && msg.sourceUrl) || node.sourceUrl || DEFAULT_URL_TEMPLATE;
+            const url = buildUrl(station, tpl);
 
-        function findStationName(kml) {
-            // Try Placemark.name or Document.name/description, or ExtendedData/ProductDefinition
+            if (node.diag) node.log(`[DWD-Forecast] URL: ${url}`);
+            setStatus("lade…", "dot", "blue");
+
+// Diagnose: kommt der hoursAhead-Wert aus der UI oder als msg an?
+            const effectiveHoursAhead = Number(
+                (msg && msg.hoursAhead != null) ? msg.hoursAhead : node.hoursAhead
+            );
+            if (node.diag) {
+                node.log(`[DWD-Forecast] cfg.hoursAhead: ${node.hoursAhead} | msg.hoursAhead: ${msg && msg.hoursAhead} | effective=${effectiveHoursAhead}`);
+            }
+
             try {
-                const doc = kml.Document || {};
-                const placemark = doc.Placemark || {};
-                const name = placemark.name || doc.name || null;
-                if (name) return String(name);
-                // fallback: description might contain station name
-                if (placemark.description) return String(placemark.description).replace(/<[^>]+>/g, "").trim();
-                if (doc.description) return String(doc.description).replace(/<[^>]+>/g, "").trim();
-            } catch (_) {}
-            return null;
-        }
+                const { timeSteps, params, stationName } = await fetchAndParseMosmix(
+                    url,
+                    "Europe/Berlin",
+                    node.diag ? node.log.bind(node) : null
+                );
 
-        function toTS(iso) {
-            const t = Date.parse(iso);
-            return Number.isFinite(t) ? t : null;
-        }
-
-        function mmPerHourFromParams(rec) {
-            // Many MOSMIX elements exist; we already mapped a generic 'precipitation' when available (RR*).
-            // If not present, returns null.
-            if (typeof rec.precipitation === "number") return rec.precipitation;
-            return null;
-        }
-
-        function humanPrecip(precipMmH) {
-            if (precipMmH == null) return null;
-            if (precipMmH <= 0.0) return "kein Niederschlag";
-            if (precipMmH < 0.1) return `sehr leichter Niederschlag – ${precipMmH.toFixed(1)} mm/h`;
-            if (precipMmH < 0.5) return `Niesel/leichter Niederschlag – ${precipMmH.toFixed(1)} mm/h`;
-            if (precipMmH < 2.0) return `Regen (leicht) – ${precipMmH.toFixed(1)} mm/h`;
-            if (precipMmH < 6.0) return `Regen (mäßig) – ${precipMmH.toFixed(1)} mm/h`;
-            if (precipMmH < 10.0) return `Regen (stark) – ${precipMmH.toFixed(1)} mm/h`;
-            return `starker Niederschlag – ${precipMmH.toFixed(1)} mm/h`;
-        }
-
-        function normalizeMOSMIX(kml) {
-            // KML structure (namespaces omitted via xml2js options):
-            // kml -> Document -> ExtendedData (ProductDefinition, ForecastTimeSteps, Forecast) + Placemark (parameters)
-            const root = kml.kml || kml;
-            const doc = root.Document;
-            if (!doc) throw new Error("ProductDefinition fehlt (Document)");
-
-            const ext = doc.ExtendedData || {};
-            const prod =
-                ext.ProductDefinition ||
-                ext["dwd:ProductDefinition"] ||
-                ext.dwdProductDefinition ||
-                ext;
-            const fts = doc.ForecastTimeSteps || ext.ForecastTimeSteps || ext["dwd:ForecastTimeSteps"] || null;
-            if (!fts || !fts.TimeStep) throw new Error("ForecastTimeSteps fehlt");
-            const timeSteps = Array.isArray(fts.TimeStep) ? fts.TimeStep : [fts.TimeStep];
-
-            const placemark = doc.Placemark || {};
-            const forecast = placemark.Forecast || placemark["dwd:Forecast"] || {};
-            const elements = Array.isArray(forecast) ? forecast : [forecast];
-
-            // Build time-indexed map and merge params
-            const recordsByIso = Object.create(null);
-            timeSteps.forEach(iso => {
-                recordsByIso[iso] = {
-                    ts: toTS(iso),
-                    iso,
-                    // core (common fields we already produced previously)
-                    pressure: null,        // PPP/PPPP
-                    temperature: null,     // TTT
-                    Td: null,              // Td
-                    windDir: null,         // DD
-                    windSpeed: null,       // FF (m/s)
-                    precipitation: null,   // RR (mm/h) if present
-                    visibility: null,      // VV (m)
-                    // … many more params will be merged below as we find them
-                };
-            });
-
-            // Helper to set value into the record only when time index aligns
-            function applySeries(paramName, values) {
-                if (!values || !Array.isArray(values)) return;
-                values.forEach((v, idx) => {
-                    const iso = timeSteps[idx];
-                    if (!iso || !(iso in recordsByIso)) return;
-                    const rec = recordsByIso[iso];
-                    switch (paramName) {
-                        case "TTT": rec.temperature = Number(v); break;             // K
-                        case "Td":  rec.Td = Number(v); break;                      // K
-                        case "PPP":
-                        case "PPPP":
-                            rec.pressure = Number(v) * 1000;                          // hPa->Pa if PPP given; MOSMIX often uses hPa in some variants.
-                            break;
-                        case "DD":  rec.windDir = Number(v); break;                 // degrees
-                        case "FF":  rec.windSpeed = Number(v); break;               // m/s
-                        case "VV":  rec.visibility = Number(v); break;              // meters
-                        case "RR":  // unified precip rate if directly provided
-                        case "RR1c":
-                        case "RRL1c":
-                            // prefer highest resolution if multiple are present
-                            if (rec.precipitation == null) rec.precipitation = Number(v) || 0;
-                            break;
-                        default:
-                            // keep full element as well (non-core) to not lose information
-                            if (v == null || v === "") return;
-                            rec[paramName] = (Number.isFinite(Number(v)) ? Number(v) : v);
+                const before = timeSteps.length;
+                const { timeSteps: ts2, params: pa2 } = applyHoursAheadFilter(
+                    timeSteps,
+                    params,
+                    effectiveHoursAhead
+                );
+                if (node.diag) {
+                    node.log(`[DWD-Forecast] hoursAhead filter: in=${before}, out=${ts2.length}`);
+                    if (ts2.length && before !== ts2.length) {
+                        node.log(`[DWD-Forecast] hoursAhead window: first=${new Date(ts2[0]).toISOString()}, last=${new Date(ts2[ts2.length-1]).toISOString()}`);
                     }
-                });
-            }
-
-            // Each element should look like: { name: 'TTT', value: [array aligned with timeSteps] } depending on how xml2js mergedAttrs
-            // Our earlier parser used mergeAttrs:true; keep same:
-            elements.forEach(el => {
-                if (!el || typeof el !== "object") return;
-                const name = el.name || el["@name"] || el["name"];
-                // Values can be in el.value or el.Data or el.timeSeries etc. Our previous mapping stored under "value"
-                let vals = el.value || el.timeSeries || el.values || el.Data || null;
-                if (vals == null) {
-                    // Some MOSMIX put them in el["dwd:value"]
-                    vals = el["dwd:value"] || null;
                 }
-                if (typeof vals === "string") {
-                    // space-separated
-                    vals = vals.trim().split(/\s+/);
+
+                // 🔍 Diagnose: verfügbare Codes ausgeben
+                if (node.diag) {
+                    const codes = Object.keys(pa2).sort();
+                    node.log("[DWD-Forecast] Verfügbare Codes: " + codes.join(", "));
+                    node.log("[DWD-Forecast] Hat rH? " + codes.includes("rH") + " | RELH? " + codes.includes("RELH"));
                 }
-                if (!Array.isArray(vals)) return;
-                applySeries(String(name || "").trim(), vals);
-            });
 
-            // Convert to array sorted by time
-            const out = Object.values(recordsByIso)
-                .filter(r => r.ts != null)
-                .sort((a, b) => a.ts - b.ts);
-
-            // precipitationText if requested later
-            return {
-                records: out,
-                document: doc
-            };
-        }
-
-        function addComputedFields(records) {
-            if (!node.computePrecipText) return;
-            records.forEach(rec => {
-                const mmh = mmPerHourFromParams(rec);
-                rec.precipitationText = humanPrecip(mmh);
-            });
-        }
-
-        function filterByOptions(records) {
-            // The node previously offered toggles to include extra fields.
-            // Core are temperature, Td, precipitation; pressure/wind/visibility are gated by checkboxes.
-            if (node.includePressure && node.includeWind && node.includeVisibility) return records; // nothing to do
-
-            return records.map(r => {
-                const keep = {
-                    ts: r.ts, iso: r.iso,
-                    temperature: r.temperature,
-                    Td: r.Td,
-                    precipitation: r.precipitation,
-                    precipitationText: r.precipitationText
+                const cfg = {
+                    coreOnly: node.coreOnly,
+                    toC: node.toC,
+                    windToKmh: node.windToKmh,
+                    pressureToHpa: node.pressureToHpa,
+                    visibilityToKm: node.visibilityToKm,
                 };
-                if (node.includePressure) keep.pressure = r.pressure;
-                if (node.includeWind) { keep.windDir = r.windDir; keep.windSpeed = r.windSpeed; }
-                if (node.includeVisibility) keep.visibility = r.visibility;
 
-                return keep;
-            });
-        }
+                const series = normalizeRecords(ts2, pa2, cfg);
 
-        async function runOnce(msg, fromTimer = false) {
-            try {
-                node.status({});
-                const url = buildUrl(node.stationId);
-                const kmz = await fetchKmz(url, node.timeoutMs);
-                const kmlXml = unzipKml(kmz);
+                if (node.diag && pa2 && Object.keys(pa2).length) {
+                    node.log(`[DWD-Forecast] Codes (Auszug): ${Object.keys(pa2).slice(0,20).join(", ")}`);
+                }
 
-                const kml = await xml2js.parseStringPromise(kmlXml, {
-                    explicitArray: false,
-                    mergeAttrs: true,
-                    normalizeTags: false,
-                    normalize: false,
-                    trim: true
-                });
-
-                const norm = normalizeMOSMIX(kml);
-                addComputedFields(norm.records);
-                const pruned = filterByOptions(norm.records);
-
-                const stationName = findStationName(kml) || null;
+                if (node.diag) {
+                    node.log(`[DWD-Forecast] Ausgabe-Datensätze: ${series.length}`);
+                }
 
                 const out = {
-                    payload: pruned,
-                    station: { id: node.stationId, name: stationName },
+                    payload: series,
+                    station: { id: station, name: stationName || null },
                     _meta: {
-                        url: buildUrl(node.stationId),
-                        count: pruned.length,
+                        url,
+                        count: series.length,
                         stale: false,
-                        fetchedAt: new Date().toISOString(),
-                        fromTimer
-                    }
+                        paramsAvailable: Object.keys(pa2).sort()
+                    },
                 };
 
-                lastGood = out;
+                setStatus(`${series.length} Punkte`, "dot", "green");
                 node.send(out);
-                statusOK(`${pruned.length} rows`);
-
             } catch (err) {
-                const msgText = (err && err.message) ? err.message : String(err);
-                statusWarn(`DWD-Forecast Fehler: ${msgText}`);
-
-                if (node.allowStale && lastGood) {
-                    const stale = Object.assign({}, lastGood, {
-                        _meta: { ...(lastGood._meta || {}), stale: true, error: msgText, deliveredAt: new Date().toISOString() }
-                    });
-                    node.send(stale);
-                } else {
-                    node.send({
-                        payload: [],
-                        station: { id: node.stationId, name: null },
-                        _meta: {
-                            url: buildUrl(node.stationId),
-                            count: 0,
-                            stale: false,
-                            error: msgText,
-                            fetchedAt: new Date().toISOString()
-                        }
-                    });
-                }
+                node.error(`DWD-Forecast Fehler: ${err && err.message ? err.message : String(err)}`, err);
+                setStatus("Fehler", "ring", "red");
             }
         }
 
-        function schedule() {
-            if (pollTimer) {
-                clearInterval(pollTimer);
-                pollTimer = null;
+        function scheduleRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
             }
-            const sec = Number(node.autoRefreshSec || 0);
-            if (sec > 0) {
-                pollTimer = setInterval(() => runOnce({}, true), sec * 1000);
+            const s = Number(node.autoRefresh || 0);
+            if (s > 0) {
+                refreshTimer = setInterval(() => runFetch({}), s * 1000);
             }
         }
 
-        node.on("input", function (msg) {
-            runOnce(msg, false);
+        node.on("input", runFetch);
+
+        node.on("close", () => {
+            if (refreshTimer) clearInterval(refreshTimer);
+            setStatus("");
         });
 
-        node.on("close", function () {
-            if (pollTimer) clearInterval(pollTimer);
-        });
-
-        // init
-        schedule();
-        if (node.immediateFetch) {
-            setTimeout(() => runOnce({}, false), 200);
+        scheduleRefresh();
+        if (node.fetchOnDeploy) {
+            runFetch({}).catch(() => {});
         } else {
-            statusOK("bereit");
+            setStatus("bereit");
         }
     }
 

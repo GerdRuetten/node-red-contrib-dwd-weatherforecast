@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0] - 2025-11-02
+### Added
+- Fallback-Berechnung der relativen Luftfeuchte aus `TTT` (Temp) und `Td` (Taupunkt), wenn `rH/RELH` nicht im MOSMIX-KML enthalten ist.
+
+### Fixed
+- Robustere KML-Parser-Strategie (Placemark/ExtendedData, dwd:Forecast, Regex-Fallback), sodass Parameter zuverlässig gefunden werden.
+- Die Begrenzung der Vorhersage auf `hoursAhead` (Vorlauf) wird nun korrekt angewendet.
+- Diverse Diagnose-Logs ergänzt, um künftige Parsing-Probleme schneller zu erkennen.
+
+### Changed
+- Einheitliche Normalisierung und sichere Einheiten-Umrechnung (°C, km/h, hPa, km).
+
 ## [1.0.9] - 2025-11-01
 ### Fixed
 - Parser-Fehler „Unexpected token ':'“ in `dwd-weatherforecast.js` behoben
