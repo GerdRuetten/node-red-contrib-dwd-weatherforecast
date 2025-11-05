@@ -82,6 +82,16 @@
         <input type="checkbox" id="node-input-visibilityToKm" checked>
     </div>
 
+    <div class="form-row">
+        <label for="node-input-windDirMode"><i class="fa fa-compass"></i> Windrichtung als Text</label>
+        <select id="node-input-windDirMode">
+            <option value="deg">Gradzahl (nur windDir)</option>
+            <option value="8">8-teilig (N, NO, O, SO, S, SW, W, NW)</option>
+            <option value="16">16-teilig (N, NNO, NO, ONO, O, …)</option>
+        </select>
+        <div class="form-tips">Bei 8/16-teilig wird zusätzlich <code>windDirCardinal</code> ausgegeben.</div>
+    </div>
+
     <hr>
 
     <div class="form-row">
@@ -99,14 +109,14 @@
 <!-- ===== Help-Tab ===== -->
 <script type="text/markdown" data-help-name="dwd-weatherforecast">
     **DWD-Weatherforecast**
-    Liest die DWD MOSMIX-Vorhersage für eine Station (z. B. **H721**) aus dem KMZ/KML-Feed,
-    parst die Zeitreihen und gibt sie als JSON-Serie aus.
+    Liest die DWD MOSMIX-Vorhersage für eine Station (z. B. **H721**) aus dem KMZ/KML-Feed, parst die Zeitreihen und gibt sie als JSON-Serie aus.
 
     **Wichtige Felder:**
     - *Stations-ID* (z. B. H721).
     - *Source-URL*: Template mit `{station}`-Platzhalter (Standard ist vorbelegt).
     - *Beim Deploy abrufen*, *Auto-Refresh (Sek.)* und *Vorlauf (Stunden)* steuern Abruf & Umfang.
     - *Nur Kernfelder* liefert kompakten Payload. Umrechnungen schalten Einheiten um (°C, km/h, hPa, km).
+    - *Windrichtung als Text*: optional zusätzliche Himmelsrichtung in 8/16-Teilung als `windDirCardinal`.
     - *Diagnose aktivieren* schreibt zusätzliche Logs in die Node-RED-Konsole.
 </script>
 
@@ -131,9 +141,10 @@
                 windToKmh:   { value: true },
                 pressureToHpa:{ value: true },
                 visibilityToKm:{ value: true },
+                windDirMode: { value: "deg" },   // NEW
                 diag:        { value: false },
-                staleOnError: { value: false },
-                onlyFuture: { value: true }
+                staleOnError:{ value: false },
+                onlyFuture:  { value: true }
             },
             label: function() {
                 return this.name || "DWD-Weatherforecast";

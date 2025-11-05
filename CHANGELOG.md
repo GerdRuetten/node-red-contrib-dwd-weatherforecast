@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0] – 2025-11-05
+
+### Added
+- Option **“Windrichtung als Text”** (`windDirMode`) in der UI mit drei Modi:  
+  `deg` (Standard, nur Grad), `8` (N, NO, O, SO, S, SW, W, NW), `16` (N, NNO, NO, …).  
+  Bei `8`/`16` wird zusätzlich zu `windDir` (°) das Feld **`windDirCardinal`** im Payload ausgegeben.
+- `_meta.windDirMode` spiegelt die gewählte Einstellung wider.
+
+### Changed
+- Keine Breaking Changes. Standardverhalten bleibt unverändert (`deg`).
+
+### Migration
+- Keine Maßnahmen erforderlich. Flows funktionieren unverändert weiter.
+
 ## [1.1.2] - 2025-11-02
 ### Fixed
 - **Stationsname:** wird automatisch aus `<kml:name>` oder `<kml:description>` gelesen

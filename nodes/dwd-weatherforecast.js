@@ -89,13 +89,11 @@ module.exports = function (RED) {
         return hits;
     }
 
-// Station-Name (Placemark > name / kml:name / description fallback)
-// Replace your existing tryGetStationName with this
+    // Station-Name (Placemark > name / kml:name / description fallback)
     function tryGetStationName(document) {
         const asArr = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
         const looksLikeId = (s) => /^[A-Z]\d{3,4}$/i.test(String(s).trim());
 
-        // get any Placemark (namespaced or not)
         const placemarks = []
             .concat(asArr(document && document.Placemark))
             .concat(asArr(document && document["kml:Placemark"]));
@@ -103,7 +101,6 @@ module.exports = function (RED) {
 
         const pm = placemarks[0];
 
-        // generic deep text picker for keys that end with ":name" or equal "name"
         const pickDeepName = (obj) => {
             const stack = [obj];
             while (stack.length) {
@@ -127,7 +124,6 @@ module.exports = function (RED) {
                             }
                         }
                     }
-                    // descend
                     if (Array.isArray(v)) stack.push(...v);
                     else if (v && typeof v === "object") stack.push(v);
                 }
@@ -135,11 +131,9 @@ module.exports = function (RED) {
             return null;
         };
 
-        // 1) Try any deep name
         let name = pickDeepName(pm);
         if (name) return name;
 
-        // 2) Fallback: description/kml:description -> strip tags & cut off "(Hxxx)"
         const pickText = (node, key) => {
             const arr = asArr(node && node[key]);
             if (!arr.length) return null;
@@ -153,13 +147,11 @@ module.exports = function (RED) {
         const desc =
             pickText(pm, "kml:description") ||
             pickText(pm, "description");
+
         if (desc) {
-            // strip HTML
             const plain = desc.replace(/<[^>]*>/g, "").trim();
-            // try "Something (H721)" -> "Something"
             const m = plain.match(/^(.+?)\s*\([A-Z0-9]{3,4}\)\s*$/i);
             if (m && m[1] && !looksLikeId(m[1])) return m[1].trim();
-            // otherwise take a reasonable first line chunk that isn't an ID
             const first = plain.split(/[\r\n]/)[0].trim();
             if (first && !looksLikeId(first)) return first;
         }
@@ -167,7 +159,7 @@ module.exports = function (RED) {
         return null;
     }
 
-    // ---- Parameter-Extraktion: Variante A – ExtendedData/SchemaData/SimpleArrayData inkl. Placemark ----
+    // ---- Parameter-Extraktionen (A–D) ----
     function extractParamsFromSchemaData(document, diagFn) {
         const params = {};
         if (!document) return params;
@@ -247,7 +239,6 @@ module.exports = function (RED) {
         return params;
     }
 
-    // ---- Parameter-Extraktion: Variante B – Forecast/TimeSeries/Parameter/values inkl. Placemark ----
     function extractParamsFromForecast(document, diagFn) {
         const params = {};
         if (!document) return params;
@@ -320,8 +311,7 @@ module.exports = function (RED) {
         return params;
     }
 
-    // ---- Parameter-Extraktion: Variante B2 – dwd:Forecast (elementName + values) ----
-// ---- Parameter-Extraktion: Variante B2 – dwd:Forecast (Attribut dwd:elementName + <dwd:value>...) ----
+    // B2: dwd:Forecast (Attribut dwd:elementName + <dwd:value>…)
     function extractParamsFromDwdForecast(document, diagFn) {
         const params = {};
         if (!document) return params;
@@ -348,18 +338,15 @@ module.exports = function (RED) {
         const allExt = collectAllExtendedData(document);
         let found = 0;
 
-        // Liest Attributwerte (mergeAttrs:true macht sie zu einfachen Properties)
         function attrOf(node, names) {
             for (const name of names) {
                 const v = node && node[name];
                 if (typeof v === "string") return v.trim();
-                // xml2js kann Attribute auch mal als 1-Element-Array liefern
                 if (Array.isArray(v) && typeof v[0] === "string") return v[0].trim();
             }
             return null;
         }
 
-        // Liest Text aus Kindelementen (array/string/_)
         function textBlocks(node, names) {
             const out = [];
             for (const name of names) {
@@ -377,21 +364,18 @@ module.exports = function (RED) {
             for (const [key, val] of Object.entries(obj)) {
                 if (endsWithAny(key, ["Forecast"])) {
                     for (const fc of asArray(val)) {
-                        // 1) Code aus Attribut dwd:elementName oder elementName
                         let code =
                             attrOf(fc, ["dwd:elementName", "elementName", "name", "id"]) ||
                             null;
                         if (!code) {
-                            // gelegentlich liegt elementName als Kindelement vor (Fallback)
                             const tn = textBlocks(fc, ["elementName", "name", "id"]);
                             if (tn.length) code = tn[0].trim();
                         }
                         if (!code) continue;
 
-                        // 2) Werte: bevorzugt <dwd:value>...</dwd:value>, alternativ <dwd:values>...</dwd:values>
                         const blocks = []
                             .concat(textBlocks(fc, ["value"]))
-                            .concat(textBlocks(fc, ["values"])); // falls es doch values gibt
+                            .concat(textBlocks(fc, ["values"]));
 
                         const numbers = blocks
                             .join(" ")
@@ -418,12 +402,11 @@ module.exports = function (RED) {
         return params;
     }
 
-    // ---- Parameter-Extraktion: Variante C – Regex-Fallback auf KML-String ----
+    // C: Regex-Fallback
     function extractParamsByRegex(kmlStr, diagFn) {
         const params = {};
         if (!kmlStr || typeof kmlStr !== "string") return params;
 
-        // SimpleArrayData name="CODE" ... <value>...</value>
         const simpleRe =
             /<[^>]*SimpleArrayData[^>]*\bname="([^"]+)"[^>]*>([\s\S]*?)<\/[^>]*SimpleArrayData>/g;
         let m;
@@ -442,7 +425,6 @@ module.exports = function (RED) {
             }
         }
 
-        // dwd:Parameter id="CODE" ... <dwd:values>...</dwd:values>
         const paramRe =
             /<dwd:Parameter[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/dwd:Parameter>/g;
         while ((m = paramRe.exec(kmlStr))) {
@@ -460,7 +442,6 @@ module.exports = function (RED) {
             }
         }
 
-        // dwd:Forecast mit <elementName>CODE</elementName><values>...</values>
         const fcChildRe = /<dwd:Forecast\b[^>]*>([\s\S]*?)<\/dwd:Forecast>/gi;
         let mf;
         while ((mf = fcChildRe.exec(kmlStr))) {
@@ -475,13 +456,11 @@ module.exports = function (RED) {
             }
         }
 
-// 3c) <dwd:Forecast dwd:elementName="CODE"> ... <dwd:value>...</dwd:value> ...
         const fcAttrRe = /<dwd:Forecast\b[^>]*\bdwd:elementName="([^"]+)"[^>]*>([\s\S]*?)<\/dwd:Forecast>/gi;
         let mfa;
         while ((mfa = fcAttrRe.exec(kmlStr))) {
             const code = mfa[1].trim();
             const block = mfa[2];
-            // sammle ALLE <dwd:value>-Blöcke
             const values = [];
             const valTagRe = /<(?:dwd:)?value\b[^>]*>([\s\S]*?)<\/(?:dwd:)?value>/gi;
             let mv;
@@ -499,7 +478,7 @@ module.exports = function (RED) {
         return params;
     }
 
-    // ---- Parameter-Extraktion: Variante D – Generischer Tiefenscan ----
+    // D: Generischer Tiefenscan
     function extractParamsByGenericWalk(root, diagFn) {
         const params = {};
         if (!root || typeof root !== "object") return params;
@@ -570,6 +549,25 @@ module.exports = function (RED) {
         return params;
     }
 
+    // ---- Windrichtungs-Konvertierung ----
+    // mode: "deg" | "8" | "16"  (Deutsch: O statt E)
+    function dirToCardinal(deg, mode) {
+        if (deg == null || !Number.isFinite(deg)) return null;
+        const norm = ((deg % 360) + 360) % 360;
+
+        if (mode === "8") {
+            const names8 = ["N","NO","O","SO","S","SW","W","NW"];
+            const idx = Math.round(norm / 45) % 8;
+            return names8[idx];
+        }
+        if (mode === "16") {
+            const names16 = ["N","NNO","NO","ONO","O","OSO","SO","SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+            const idx = Math.round(norm / 22.5) % 16;
+            return names16[idx];
+        }
+        return null; // "deg" -> kein Text
+    }
+
     // ---- Normalisierung auf Records ----
     function normalizeRecords(timeSteps, params, cfg) {
         const getFirst = (codes, i) => {
@@ -580,30 +578,25 @@ module.exports = function (RED) {
             return null;
         };
 
-        // Kelvin helpers
         const KtoC = (k) => (k == null ? null : k - 273.15);
-
-        // Magnus constants (over water)
-        const A = 17.625, B = 243.04; // temperature in °C
+        const A = 17.625, B = 243.04;
 
         const out = [];
         for (let i = 0; i < timeSteps.length; i++) {
             const ts = timeSteps[i];
             const iso = new Date(ts).toISOString();
 
-            // raw values (as provided by MOSMIX)
-            const T_K   = getFirst(["TTT"], i);     // air temperature [K]
-            const Td_K  = getFirst(["Td"], i);      // dew point [K]
-            let   RH    = getFirst(["rH","RELH"], i); // relative humidity [%] if provided
+            const T_K   = getFirst(["TTT"], i);
+            const Td_K  = getFirst(["Td"], i);
+            let   RH    = getFirst(["rH","RELH"], i);
 
-            let windSpeed   = getFirst(["FF"], i);      // m/s
-            let windDir     = getFirst(["DD"], i);      // °
-            let pressurePa  = getFirst(["PPPP"], i);    // Pa
-            let visibilityM = getFirst(["VV"], i);      // m
-            let cloudCover  = getFirst(["Neff","neff"], i); // %
-            let precip      = getFirst(["RR1c","RR1o1"], i); // mm/h
+            let windSpeed   = getFirst(["FF"], i);
+            let windDir     = getFirst(["DD"], i);
+            let pressurePa  = getFirst(["PPPP"], i);
+            let visibilityM = getFirst(["VV"], i);
+            let cloudCover  = getFirst(["Neff","neff"], i);
+            let precip      = getFirst(["RR1c","RR1o1"], i);
 
-            // Compute RH from T and Td if missing
             if ((RH == null || !Number.isFinite(RH)) && T_K != null && Td_K != null) {
                 const T_C  = KtoC(T_K);
                 const Td_C = KtoC(Td_K);
@@ -615,15 +608,14 @@ module.exports = function (RED) {
                 }
             }
 
-            // Build record (convert units if configured)
             let temperature = T_K;
             let pressure    = pressurePa;
             let visibility  = visibilityM;
 
             if (cfg.toC && temperature != null) temperature = +KtoC(temperature).toFixed(2);
-            if (cfg.windToKmh && windSpeed != null) windSpeed = +(windSpeed * 3.6).toFixed(2);
-            if (cfg.pressureToHpa && pressure != null) pressure = Math.round(pressure / 100);
-            if (cfg.visibilityToKm && visibility != null) visibility = +(visibility / 1000).toFixed(1);
+            if (cfg.windToKmh && windSpeed != null) windSpeed = +toKmh(windSpeed).toFixed(2);
+            if (cfg.pressureToHpa && pressure != null) pressure = Math.round(toHpa(pressure));
+            if (cfg.visibilityToKm && visibility != null) visibility = +toKm(visibility).toFixed(1);
 
             const rec = {
                 ts, iso,
@@ -637,6 +629,11 @@ module.exports = function (RED) {
                 precipitation: precip ?? null,
                 precipitationText: null,
             };
+
+            // Windrichtung als Text nach Wunsch
+            if (cfg.windDirMode && cfg.windDirMode !== "deg") {
+                rec.windDirCardinal = dirToCardinal(rec.windDir, cfg.windDirMode);
+            }
 
             if (rec.precipitation != null) {
                 const kind = "Regen";
@@ -653,7 +650,7 @@ module.exports = function (RED) {
             const core = [
                 "ts","iso",
                 "temperature","windSpeed","windDir","pressure",
-                "relHumidity","visibility","precipitation","precipitationText","cloudCover"
+                "relHumidity","visibility","precipitation","precipitationText","cloudCover","windDirCardinal"
             ];
             return out.map((r) => {
                 const o = {};
@@ -696,7 +693,7 @@ module.exports = function (RED) {
                     diagFn(`[DWD-Forecast] KML picked: ${kmlEntry.entryName} (${kmlEntry.header.size} bytes)`);
                 }
 
-                // *** Diagnose-Zähler + Sample-Blöcke auf KML-String ***
+                // Diagnose-Kennzahlen
                 if (diagFn) {
                     const count = (re) => ((kmlStr.match(re) || []).length);
                     diagFn(`[DWD-Forecast] Count <SimpleArrayData>: ${count(/<([a-zA-Z0-9_]+:)?SimpleArrayData\b/gi)}`);
@@ -705,10 +702,6 @@ module.exports = function (RED) {
                     diagFn(`[DWD-Forecast] Count <values>: ${count(/<([a-zA-Z0-9_]+:)?values\b/gi)}`);
                     diagFn(`[DWD-Forecast] Count <value>: ${count(/<([a-zA-Z0-9_]+:)?value\b/gi)}`);
 
-                    const m1 = kmlStr.match(/<([a-zA-Z0-9_]+:)?SimpleArrayData\b[\s\S]*?<\/\1?SimpleArrayData>/i);
-                    if (m1) diagFn(`[DWD-Forecast] Sample SimpleArrayData: ${m1[0].slice(0, 500).replace(/\s+/g,' ')}…`);
-                    const m2 = kmlStr.match(/<([a-zA-Z0-9_]+:)?Parameter\b[^>]*\bid="[^"]+"[\s\S]*?<\/\1?Parameter>/i);
-                    if (m2) diagFn(`[DWD-Forecast] Sample Parameter: ${m2[0].slice(0, 500).replace(/\s+/g,' ')}…`);
                     const m3 = kmlStr.match(/<([a-zA-Z0-9_]+:)?Forecast\b[\s\S]*?<\/\1?Forecast>/i);
                     if (m3) diagFn(`[DWD-Forecast] Sample Forecast: ${m3[0].slice(0, 500).replace(/\s+/g,' ')}…`);
                 }
@@ -729,9 +722,8 @@ module.exports = function (RED) {
                 }
                 if (!doc) throw new Error("KML Document fehlt");
 
-                // --- Diagnose: Placemark-Struktur inspizieren ---
+                // optional: Placemark-Struktur debuggen
                 if (diagFn && doc) {
-                    const asArray = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
                     const pms = []
                         .concat(asArray(doc.Placemark))
                         .concat(asArray(doc["kml:Placemark"]))
@@ -739,20 +731,6 @@ module.exports = function (RED) {
 
                     if (pms.length) {
                         diagFn(`[DWD-Forecast] Placemark keys: ${Object.keys(pms[0]).join(", ")}`);
-                        if (pms[0].ExtendedData) {
-                            const ext = asArray(pms[0].ExtendedData)[0] || {};
-                            diagFn(`[DWD-Forecast] Placemark.ExtendedData keys: ${Object.keys(ext).join(", ")}`);
-                            // Wenn SchemaData vorhanden → auch deren Keys loggen
-                            const schemas = []
-                                .concat(asArray(ext.SchemaData))
-                                .concat(asArray(ext["kml:SchemaData"]))
-                                .filter(Boolean);
-                            if (schemas.length) {
-                                diagFn(`[DWD-Forecast] Placemark.ExtendedData.SchemaData keys: ${Object.keys(schemas[0]).join(", ")}`);
-                            }
-                        }
-                    } else {
-                        diagFn("[DWD-Forecast] Keine Placemark-Knoten gefunden.");
                     }
                 }
 
@@ -785,7 +763,7 @@ module.exports = function (RED) {
                 }
                 if (!timeSteps.length) throw new Error("ForecastTimeSteps leer");
 
-                // Params: A) SchemaData, B) Forecast/TimeSeries, B2) dwd:Forecast(child), C) Regex-Fallback, D) Walk
+                // Params A–D sammeln
                 const paramsA = extractParamsFromSchemaData(doc, diagFn);
                 let params = { ...paramsA };
 
@@ -807,22 +785,6 @@ module.exports = function (RED) {
                 if (!Object.keys(params).length) {
                     const paramsD = extractParamsByGenericWalk(doc, diagFn);
                     params = { ...params, ...paramsD };
-                }
-
-                // *** Harte, gezielte MOSMIX-Fallback-Codes (wenn oben alles 0 ergab) ***
-                if (!Object.keys(params).length) {
-                    const wanted = ["TTT","FF","DD","PPPP","RELH","VV","Neff","neff","RR1c","RR1o1"];
-                    for (const code of wanted) {
-                        const reBlock = new RegExp(`<([a-zA-Z0-9_]+:)?Parameter\\b[^>]*\\bid="${code}"[^>]*>([\\s\\S]*?)<\\/\\1?Parameter>`, "i");
-                        const mb = kmlStr.match(reBlock);
-                        if (!mb) continue;
-                        const block = mb[2];
-                        const mv = block.match(/<([a-zA-Z0-9_]+:)?values\b[^>]*>([\s\S]*?)<\/\1?values>/i);
-                        if (!mv) continue;
-                        const nums = mv[2].trim().split(/\s+/).map((s) => Number(s)).filter((n) => Number.isFinite(n));
-                        if (nums.length) params[code] = { code, unit: null, values: nums };
-                    }
-                    if (diagFn) diagFn(`[DWD-Forecast] HARDCODE-Fallback Param-Codes: ${Object.keys(params).join(", ")}`);
                 }
 
                 if (diagFn) diagFn(`[DWD-Forecast] gefundene Parameter (gesamt): ${Object.keys(params).length}`);
@@ -866,6 +828,7 @@ module.exports = function (RED) {
         node.windToKmh = config.windToKmh !== false;
         node.pressureToHpa = config.pressureToHpa !== false;
         node.visibilityToKm = config.visibilityToKm !== false;
+        node.windDirMode = (config.windDirMode || "deg"); // NEW
         node.diag = !!config.diag;
         node.staleOnError = !!config.staleOnError;
         node.onlyFuture = !!config.onlyFuture;
@@ -948,7 +911,6 @@ module.exports = function (RED) {
             if (!onlyFuture) return { timeSteps, params };
             const now = Date.now();
 
-            // ersten Index >= now finden
             let start = -1;
             for (let i = 0; i < timeSteps.length; i++) {
                 if (timeSteps[i] >= now) { start = i; break; }
@@ -956,14 +918,12 @@ module.exports = function (RED) {
 
             if (start <= 0) {
                 if (start === -1) {
-                    // keine zukünftigen Punkte -> alles leer zurückgeben
                     const emptyParams = {};
                     for (const [code, p] of Object.entries(params)) {
                         emptyParams[code] = { ...p, values: [] };
                     }
                     return { timeSteps: [], params: emptyParams };
                 }
-                // start === 0 -> alles ist eh zukünftig
                 return { timeSteps, params };
             }
 
@@ -983,7 +943,6 @@ module.exports = function (RED) {
             if (node.diag) node.log(`[DWD-Forecast] URL: ${url}`);
             setStatus("lade…", "dot", "blue");
 
-// Diagnose: kommt der hoursAhead-Wert aus der UI oder als msg an?
             const effectiveHoursAhead = Number(
                 (msg && msg.hoursAhead != null) ? msg.hoursAhead : node.hoursAhead
             );
@@ -1003,43 +962,30 @@ module.exports = function (RED) {
                 }
 
                 const before = timeSteps.length;
-// Effektive Optionen (msg > node)
-                const effectiveHoursAhead = Number(
+                const effHoursAhead = Number(
                     (msg && msg.hoursAhead != null ? msg.hoursAhead : node.hoursAhead) || 0
                 );
                 const effectiveOnlyFuture =
                     typeof (msg && msg.onlyFuture) === "boolean" ? msg.onlyFuture : node.onlyFuture;
 
-// 1) erst Vergangenheit kappen
+                // 1) Vergangenheit entfernen
                 let { timeSteps: ts1, params: pa1 } = applyOnlyFutureFilter(
                     timeSteps,
                     params,
                     effectiveOnlyFuture
                 );
-
-// 2) dann Stundenfenster anwenden
+                // 2) Stundenfenster anwenden
                 let { timeSteps: ts2, params: pa2 } = applyHoursAheadFilter(
                     ts1,
                     pa1,
-                    effectiveHoursAhead
+                    effHoursAhead
                 );
                 if (node.diag) {
                     node.log(`[DWD-Forecast] hoursAhead filter: in=${before}, out=${ts2.length}`);
                     if (ts2.length && before !== ts2.length) {
                         node.log(`[DWD-Forecast] hoursAhead window: first=${new Date(ts2[0]).toISOString()}, last=${new Date(ts2[ts2.length-1]).toISOString()}`);
                     }
-                }
-
-                if (node.diag) {
-                    node.log(`[DWD-Forecast] onlyFuture=${effectiveOnlyFuture} | hoursAhead=${effectiveHoursAhead}`);
-                    node.log(`[DWD-Forecast] filtered count: ${ts2.length}`);
-                }
-
-                // 🔍 Diagnose: verfügbare Codes ausgeben
-                if (node.diag) {
-                    const codes = Object.keys(pa2).sort();
-                    node.log("[DWD-Forecast] Verfügbare Codes: " + codes.join(", "));
-                    node.log("[DWD-Forecast] Hat rH? " + codes.includes("rH") + " | RELH? " + codes.includes("RELH"));
+                    node.log(`[DWD-Forecast] onlyFuture=${effectiveOnlyFuture} | hoursAhead=${effHoursAhead}`);
                 }
 
                 const cfg = {
@@ -1048,6 +994,7 @@ module.exports = function (RED) {
                     windToKmh: node.windToKmh,
                     pressureToHpa: node.pressureToHpa,
                     visibilityToKm: node.visibilityToKm,
+                    windDirMode: node.windDirMode // NEW
                 };
 
                 const series = normalizeRecords(ts2, pa2, cfg);
@@ -1067,7 +1014,8 @@ module.exports = function (RED) {
                         url,
                         count: series.length,
                         stale: false,
-                        paramsAvailable: Object.keys(pa2).sort()
+                        paramsAvailable: Object.keys(pa2).sort(),
+                        windDirMode: node.windDirMode
                     },
                 };
 
@@ -1078,7 +1026,7 @@ module.exports = function (RED) {
             } catch (err) {
                 if (node.staleOnError) {
                     const sent = sendStaleIfAvailable();
-                    if (sent) return; // stale wurde gesendet, kein weiterer Fehlerwurf
+                    if (sent) return;
                 }
                 node.error(`DWD-Forecast Fehler: ${err && err.message ? err.message : String(err)}`, err);
                 setStatus("Fehler", "ring", "red");
