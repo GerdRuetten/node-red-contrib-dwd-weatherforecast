@@ -1,107 +1,110 @@
 # Changelog
 
-## [1.2.0] – 2025-11-05
+## [1.2.1] - 2025-11-06
+### Docs
+- Unified README style and structure with other DWD modules for consistent documentation.
 
+## [1.2.0] – 2025-11-05
 ### Added
-- Option **“Windrichtung als Text”** (`windDirMode`) in der UI mit drei Modi:  
-  `deg` (Standard, nur Grad), `8` (N, NO, O, SO, S, SW, W, NW), `16` (N, NNO, NO, …).  
-  Bei `8`/`16` wird zusätzlich zu `windDir` (°) das Feld **`windDirCardinal`** im Payload ausgegeben.
-- `_meta.windDirMode` spiegelt die gewählte Einstellung wider.
+- Option **“Wind direction as text”** (`windDirMode`) in the UI with three modes:  
+  `deg` (default, degrees only), `8` (N, NE, E, SE, S, SW, W, NW), `16` (N, NNE, NE, …).  
+  For `8`/`16`, in addition to `windDir` (°), the field **`windDirCardinal`** is output in the payload.
+- `_meta.windDirMode` reflects the selected setting.
 
 ### Changed
-- Keine Breaking Changes. Standardverhalten bleibt unverändert (`deg`).
+- No breaking changes. Default behavior remains unchanged (`deg`).
 
 ### Migration
-- Keine Maßnahmen erforderlich. Flows funktionieren unverändert weiter.
+- No actions required. Flows continue to work unchanged.
 
 ## [1.1.2] - 2025-11-02
 ### Fixed
-- **Stationsname:** wird automatisch aus `<kml:name>` oder `<kml:description>` gelesen
+- **Station name:** automatically read from `<kml:name>` or `<kml:description>`
 
 ## [1.1.1] - 2025-11-02
 ### Added
-- **Filter „Nur zukünftige Zeitpunkte“**: entfernt vergangene Zeitstempel, bevor die optionale Stundenbegrenzung greift.
-- Optionaler **Stale-Fallback**: sendet bei Fehlern die letzte erfolgreiche Antwort, wenn aktiviert.
+- **Filter “Only future timestamps”**: removes past timestamps before the optional hour limit applies.
+- Optional **stale fallback**: sends the last successful response in case of errors, if enabled.
 
 ## [1.1.0] - 2025-11-02
 ### Added
-- Fallback-Berechnung der relativen Luftfeuchte aus `TTT` (Temp) und `Td` (Taupunkt), wenn `rH/RELH` nicht im MOSMIX-KML enthalten ist.
+- Fallback calculation of relative humidity from `TTT` (temp) and `Td` (dew point) if `rH/RELH` is not included in the MOSMIX-KML.
 
 ### Fixed
-- Robustere KML-Parser-Strategie (Placemark/ExtendedData, dwd:Forecast, Regex-Fallback), sodass Parameter zuverlässig gefunden werden.
-- Die Begrenzung der Vorhersage auf `hoursAhead` (Vorlauf) wird nun korrekt angewendet.
-- Diverse Diagnose-Logs ergänzt, um künftige Parsing-Probleme schneller zu erkennen.
+- More robust KML parser strategy (Placemark/ExtendedData, dwd:Forecast, regex fallback) to reliably find parameters.
+- The limitation of the forecast to `hoursAhead` (lead time) is now correctly applied.
+- Various diagnostic logs added to detect future parsing issues more quickly.
 
 ### Changed
-- Einheitliche Normalisierung und sichere Einheiten-Umrechnung (°C, km/h, hPa, km).
+- Consistent normalization and safe unit conversion (°C, km/h, hPa, km).
 
 ## [1.0.9] - 2025-11-01
 ### Fixed
-- Parser-Fehler „Unexpected token ':'“ in `dwd-weatherforecast.js` behoben
-  (falscher Zugriff auf `dwd:ProductDefinition`).
+- Parser error “Unexpected token ':'” in `dwd-weatherforecast.js` fixed
+  (incorrect access to `dwd:ProductDefinition`).
 
 ## [1.0.8] - 2025-10-30
 ### Changed
-- Release-Prozess verbessert:
-    - Neues Skript `scripts/ensure-changelog.js` prüft beim Versions-Bump automatisch, ob die `CHANGELOG.md` geändert und gestaged wurde.
-    - Neue `preversion`, `version` und `postversion` Hooks in der `package.json` für konsistente Commits und automatischen Push.
-- `package.json` um Release-Skripte erweitert und Build-Prozess optimiert.
-- Keine funktionalen Änderungen am Node-Code selbst.
+- Release process improved:
+    - New script `scripts/ensure-changelog.js` automatically checks on version bump whether `CHANGELOG.md` was changed and staged.
+    - New `preversion`, `version` and `postversion` hooks in `package.json` for consistent commits and automatic push.
+- `package.json` extended with release scripts and build process optimized.
+- No functional changes to the Node code itself.
 
 ## [1.0.7] - 2025-10-30
 ### Changed
-- HTTP-Client: Migration von `request` (deprecated) zu `axios`
-- Stabileres Fehler- und Timeout-Handling bei DWD-Abrufen
+- HTTP client: migration from `request` (deprecated) to `axios`
+- More stable error and timeout handling for DWD requests
 
 ## [1.0.6] - 2025-10-30
 ### Changed
-- Dependencies aktualisiert: adm-zip, moment-timezone, xml2js (Scorecard „latest deps“)
-- Verifikation: `node-red.version` auf npm vorhanden (Scorecard-Hinweis war Cache)
+- Dependencies updated: adm-zip, moment-timezone, xml2js (scorecard “latest deps”)
+- Verification: `node-red.version` present on npm (scorecard note was cache)
 
 ## [1.0.5] - 2025-10-30
 ### Changed
-- Release workflow (`.github/workflows/release.yml`) überarbeitet:
-    - Automatische Erstellung von GitHub Releases mit Release Notes
-    - Pflege des `latest`-Tags für klare Zuordnung aktueller Version
-    - Bessere Sicherheits- und Konsistenzchecks vor npm-Publish
-- `package.json`: Mindestversionen ergänzt
+- Release workflow (`.github/workflows/release.yml`) revised:
+    - Automatic creation of GitHub releases with release notes
+    - Maintenance of the `latest` tag for clear assignment of current version
+    - Better security and consistency checks before npm publish
+- `package.json`: minimum versions added
     - Node-RED: `"node-red.version": ">=3.0.0"`
     - Node.js/NPM: `"engines": { "node": ">=18.0.0", "npm": ">=9.0.0" }`
-- Beispiele ergänzt: `examples/weatherforecast-basic.json` (für Scorecard „Examples“)
-- Metadata/Files: `files`-Feld enthält jetzt `examples/` und `CHANGELOG.md`
+- Examples added: `examples/weatherforecast-basic.json` (for scorecard “Examples”)
+- Metadata/files: `files` field now includes `examples/` and `CHANGELOG.md`
 
 ### Security / Maintenance
-- Abhängigkeiten auf aktuelle Ranges geprüft (Scorecard-Hinweis)
+- Dependencies checked for current ranges (scorecard note)
 
 ## [1.0.4] - 2025-10-30
 ### Changed
-- Metadaten in `package.json` erweitert (`homepage`, `bugs`, `publishConfig`, `engines`)
-- Darstellung und Verlinkung auf npm und flows.nodered.org verbessert
+- Metadata in `package.json` extended (`homepage`, `bugs`, `publishConfig`, `engines`)
+- Presentation and linking on npm and flows.nodered.org improved
 
 ## [1.0.3] - 2025-10-30
 ### Added
-- Neue `.gitignore` im Repository-Root für Node.js-, Node-RED- und WebStorm-Projekte
-- Neue `CHANGELOG.md` zur separaten Pflege von Versionsänderungen
+- New `.gitignore` in repository root for Node.js, Node-RED, and WebStorm projects
+- New `CHANGELOG.md` for separate maintenance of version changes
 
 ### Changed
-- README.md angepasst: Changelog-Abschnitt entfernt und Link zur `CHANGELOG.md` ergänzt
-- Kleinere Formatierungen und Strukturverbesserungen in der Dokumentation
+- README.md adjusted: removed changelog section and added link to `CHANGELOG.md`
+- Minor formatting and structural improvements in the documentation
 
 ## [1.0.2] - 2025-10-30
 ### Fixed
-- Workflow-Tag v1.0.1 enthielt keine Workflow-Datei – Release nicht getriggert
-- Neu getaggte Version v1.0.2 löst nun automatische Veröffentlichung aus
+- Workflow tag v1.0.1 did not contain workflow file – release not triggered
+- Newly tagged version v1.0.2 now triggers automatic publication
 
 ### Changed
-- Repository final mit `release.yml` synchronisiert
-- NPM-Veröffentlichung erfolgreich getestet und bestätigt
+- Repository finally synchronized with `release.yml`
+- NPM publication successfully tested and confirmed
 
 ## [1.0.1] - 2025-10-30
 ### Added
-- Neuer Node „DWD Forecast“ für MOSMIX-L Wettervorhersagen
-- Unterstützt Dekompression und Parsing von `.kmz` (KML) Dateien
-- UI-Optionen für Stationsauswahl und Datenfelder (Kern-, Wind-, Druck-Parameter)
-- Automatischer Release-Workflow für GitHub + npm integriert
+- New node “DWD Forecast” for MOSMIX_L weather forecasts
+- Supports decompression and parsing of `.kmz` (KML) files
+- UI options for station selection and data fields (core, wind, pressure parameters)
+- Automatic release workflow for GitHub + npm integrated
 
 ## [1.0.0] - 2025-10-30
 ### Added

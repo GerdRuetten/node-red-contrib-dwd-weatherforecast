@@ -20,6 +20,7 @@ key weather parameters such as temperature, humidity, wind, pressure, and precip
 - Allows **filtering** to only show active or future forecast steps
 - Includes **core data mode** for compact payloads
 - Provides **station metadata** (`id` + `name`)
+- Optional **cardinal wind direction** output (`windDirCardinal`) with selectable mode: **deg / 8-wind / 16-wind**
 - Includes **computed field `precipitationText`** (e.g. “Regen (leicht) – 0.3 mm/h”)
 - Built-in fallback calculation for **relative humidity (RELH)** if missing in the feed
 
@@ -71,6 +72,7 @@ Then restart Node-RED.
 | **Convert temperature to °C** | checkbox | Converts Kelvin → °C |
 | **Convert pressure to hPa** | checkbox | Converts Pa → hPa |
 | **Convert wind speed to km/h** | checkbox | Converts m/s → km/h |
+| **Wind direction mode** | select | Format of wind direction: `deg` (0–360), `8` (N, NE, E, …), or `16` (N, NNE, NE, …). Adds `windDirCardinal` when `8`/ `16` is selected. |
 | **Convert visibility to km** | checkbox | Converts m → km |
 | **Core data only** | checkbox | Outputs only main weather parameters |
 | **Show precipitation text** | built-in | Adds human-readable `precipitationText` field |
@@ -89,6 +91,7 @@ Then restart Node-RED.
       "pressure": 1010.1,
       "windSpeed": 18.5,
       "windDir": 236,
+      "windDirCardinal": "SW",
       "cloudCover": 69,
       "precipitation": 0.3,
       "precipitationText": "Regen (leicht)",
@@ -118,6 +121,7 @@ Then restart Node-RED.
 - The node caches the last valid forecast internally to prevent empty data during outages.
 - For automatic updates, set *auto refresh* (e.g. `1800` s = 30 min).
 - Combine this node with dashboard, notification, or influxdb nodes for live weather visualization.
+- To switch between degrees and compass points, set **Wind direction mode** to `deg`, `8`, or `16`.
 
 ---
 
@@ -139,7 +143,7 @@ MIT © 2025 [Gerd Rütten](https://github.com/GerdRuetten)
 ---
 
 ## 🧰 Changelog
-Siehe **[CHANGELOG.md](./CHANGELOG.md)**.
+See [CHANGELOG.md](./CHANGELOG.md) for details.
 
 ---
 
@@ -160,6 +164,7 @@ Siehe **[CHANGELOG.md](./CHANGELOG.md)**.
     "outputHectoPascal": true,
     "outputWindKmh": true,
     "outputVisibilityKm": true,
+    "windDirMode": "16",
     "coreOnly": false
   }
 ]
