@@ -815,6 +815,11 @@ module.exports = function (RED) {
         RED.nodes.createNode(this, config);
         const node = this;
 
+        // i18n-Helfer: Runtime-Übersetzungen über RED._
+        const t = (key, opts) =>
+            RED._("node-red-contrib-dwd-weatherforecast/dwd-weatherforecast:" + key, opts);
+
+        // ---- Konfiguration aus UI ----
         node.station = (config.station || "").toUpperCase().trim();
         node.sourceUrl = (config.sourceUrl || DEFAULT_URL_TEMPLATE).trim();
 
@@ -833,55 +838,12 @@ module.exports = function (RED) {
         node.staleOnError = !!config.staleOnError;
         node.onlyFuture = !!config.onlyFuture;
 
+        // ---- Status-Helfer ----
         let refreshTimer = null;
         const setStatus = (text, shape = "dot", color = "blue") =>
             node.status({ fill: color, shape, text });
 
-        function buildUrl(station, tpl) {
-            const st = (station || "").toUpperCase().trim();
-            if (!st) throw new Error("Stations-ID fehlt");
-            return (tpl || DEFAULT_URL_TEMPLATE).replace(/{station}/gi, st);
-        }
-
-        // begrenzt timeSteps/params auf das Zeitfenster [now, now + hoursAhead h]
-        function applyHoursAheadFilter(timeSteps, params, hoursAhead) {
-            const now = Date.now();
-            if (!hoursAhead || !Number.isFinite(hoursAhead) || hoursAhead <= 0) {
-                return { timeSteps, params };
-            }
-            const end = now + hoursAhead * 3600 * 1000;
-
-            let firstIdx = -1, lastIdx = -1;
-            for (let i = 0; i < timeSteps.length; i++) {
-                const t = timeSteps[i];
-                if (t >= now && t <= end) {
-                    if (firstIdx === -1) firstIdx = i;
-                    lastIdx = i;
-                }
-            }
-
-            if (firstIdx === -1) {
-                for (let i = 0; i < timeSteps.length; i++) {
-                    const t = timeSteps[i];
-                    if (t >= now) { firstIdx = i; break; }
-                }
-                if (firstIdx !== -1) {
-                    lastIdx = Math.min(timeSteps.length - 1, firstIdx + Math.max(0, Math.ceil(hoursAhead)) - 1);
-                }
-            }
-
-            if (firstIdx === -1 || lastIdx === -1 || lastIdx < firstIdx) {
-                return { timeSteps, params };
-            }
-
-            const newSteps = timeSteps.slice(firstIdx, lastIdx + 1);
-            const newParams = {};
-            for (const [code, p] of Object.entries(params)) {
-                newParams[code] = { ...p, values: p.values.slice(firstIdx, lastIdx + 1) };
-            }
-            return { timeSteps: newSteps, params: newParams };
-        }
-
+        // ---- Context für Stale-Daten ----
         const ctx = node.context();
         const CTX_KEY = "lastGood";
 
@@ -897,23 +859,91 @@ module.exports = function (RED) {
         function sendStaleIfAvailable() {
             const last = ctx.get(CTX_KEY);
             if (!last) return false;
+
+            const count = last.meta?.count || last.series?.length || 0;
             const out = {
                 payload: last.series,
                 station: { id: last.station, name: last.meta?.stationName || null },
-                _meta: { ...(last.meta||{}), stale: true }
+                _meta: { ...(last.meta || {}), stale: true }
             };
-            node.status({ fill: "yellow", shape: "ring", text: `stale (${out._meta?.count||out.payload?.length||0})` });
+
+            node.status({
+                fill: "yellow",
+                shape: "ring",
+                text: t("runtime.statusStale", { count })
+            });
+
             node.send(out);
             return true;
         }
 
+        // ---- URL bauen (mit i18n-Fehler bei fehlender Station) ----
+        function buildUrl(station, tpl) {
+            const st = (station || "").toUpperCase().trim();
+            if (!st) {
+                // Fehlermeldung bereits übersetzt
+                throw new Error(t("runtime.errorStationMissing"));
+            }
+            return (tpl || DEFAULT_URL_TEMPLATE).replace(/{station}/gi, st);
+        }
+
+        // begrenzt timeSteps/params auf das Zeitfenster [now, now + hoursAhead h]
+        function applyHoursAheadFilter(timeSteps, params, hoursAhead) {
+            const now = Date.now();
+            if (!hoursAhead || !Number.isFinite(hoursAhead) || hoursAhead <= 0) {
+                return { timeSteps, params };
+            }
+            const end = now + hoursAhead * 3600 * 1000;
+
+            let firstIdx = -1,
+                lastIdx = -1;
+            for (let i = 0; i < timeSteps.length; i++) {
+                const tVal = timeSteps[i];
+                if (tVal >= now && tVal <= end) {
+                    if (firstIdx === -1) firstIdx = i;
+                    lastIdx = i;
+                }
+            }
+
+            if (firstIdx === -1) {
+                for (let i = 0; i < timeSteps.length; i++) {
+                    const tVal = timeSteps[i];
+                    if (tVal >= now) {
+                        firstIdx = i;
+                        break;
+                    }
+                }
+                if (firstIdx !== -1) {
+                    lastIdx = Math.min(
+                        timeSteps.length - 1,
+                        firstIdx + Math.max(0, Math.ceil(hoursAhead)) - 1
+                    );
+                }
+            }
+
+            if (firstIdx === -1 || lastIdx === -1 || lastIdx < firstIdx) {
+                return { timeSteps, params };
+            }
+
+            const newSteps = timeSteps.slice(firstIdx, lastIdx + 1);
+            const newParams = {};
+            for (const [code, p] of Object.entries(params)) {
+                newParams[code] = { ...p, values: p.values.slice(firstIdx, lastIdx + 1) };
+            }
+            return { timeSteps: newSteps, params: newParams };
+        }
+
+        // nur zukünftige Zeitpunkte behalten
         function applyOnlyFutureFilter(timeSteps, params, onlyFuture) {
             if (!onlyFuture) return { timeSteps, params };
             const now = Date.now();
 
             let start = -1;
             for (let i = 0; i < timeSteps.length; i++) {
-                if (timeSteps[i] >= now) { start = i; break; }
+                if (timeSteps[i] >= now) {
+                    start = i;
+                    break;
+                }
             }
 
             if (start <= 0) {
@@ -935,19 +965,25 @@ module.exports = function (RED) {
             return { timeSteps: ts, params: pr };
         }
 
+        // ---- Haupt-Logik: Abruf + Normalisierung ----
         async function runFetch(msg) {
             const station = (msg && msg.station) || node.station;
-            const tpl = (msg && msg.sourceUrl) || node.sourceUrl || DEFAULT_URL_TEMPLATE;
+            const tpl =
+                (msg && msg.sourceUrl) || node.sourceUrl || DEFAULT_URL_TEMPLATE;
             const url = buildUrl(station, tpl);
 
             if (node.diag) node.log(`[DWD-Forecast] URL: ${url}`);
-            setStatus("lade…", "dot", "blue");
+            setStatus(t("runtime.statusLoading"), "dot", "blue");
 
             const effectiveHoursAhead = Number(
-                (msg && msg.hoursAhead != null) ? msg.hoursAhead : node.hoursAhead
+                msg && msg.hoursAhead != null ? msg.hoursAhead : node.hoursAhead
             );
             if (node.diag) {
-                node.log(`[DWD-Forecast] cfg.hoursAhead: ${node.hoursAhead} | msg.hoursAhead: ${msg && msg.hoursAhead} | effective=${effectiveHoursAhead}`);
+                node.log(
+                    `[DWD-Forecast] cfg.hoursAhead: ${node.hoursAhead} | msg.hoursAhead: ${
+                        msg && msg.hoursAhead
+                    } | effective=${effectiveHoursAhead}`
+                );
             }
 
             try {
@@ -958,7 +994,11 @@ module.exports = function (RED) {
                 );
 
                 if (node.diag) {
-                    node.log(`[DWD-Forecast] StationName resolved: ${stationName ?? "null"}`);
+                    node.log(
+                        `[DWD-Forecast] StationName resolved: ${
+                            stationName ?? "null"
+                        }`
+                    );
                 }
 
                 const before = timeSteps.length;
@@ -966,7 +1006,9 @@ module.exports = function (RED) {
                     (msg && msg.hoursAhead != null ? msg.hoursAhead : node.hoursAhead) || 0
                 );
                 const effectiveOnlyFuture =
-                    typeof (msg && msg.onlyFuture) === "boolean" ? msg.onlyFuture : node.onlyFuture;
+                    typeof (msg && msg.onlyFuture) === "boolean"
+                        ? msg.onlyFuture
+                        : node.onlyFuture;
 
                 // 1) Vergangenheit entfernen
                 let { timeSteps: ts1, params: pa1 } = applyOnlyFutureFilter(
@@ -980,12 +1022,23 @@ module.exports = function (RED) {
                     pa1,
                     effHoursAhead
                 );
+
                 if (node.diag) {
-                    node.log(`[DWD-Forecast] hoursAhead filter: in=${before}, out=${ts2.length}`);
+                    node.log(
+                        `[DWD-Forecast] hoursAhead filter: in=${before}, out=${ts2.length}`
+                    );
                     if (ts2.length && before !== ts2.length) {
-                        node.log(`[DWD-Forecast] hoursAhead window: first=${new Date(ts2[0]).toISOString()}, last=${new Date(ts2[ts2.length-1]).toISOString()}`);
+                        node.log(
+                            `[DWD-Forecast] hoursAhead window: first=${new Date(
+                                ts2[0]
+                            ).toISOString()}, last=${new Date(
+                                ts2[ts2.length - 1]
+                            ).toISOString()}`
+                        );
                     }
-                    node.log(`[DWD-Forecast] onlyFuture=${effectiveOnlyFuture} | hoursAhead=${effHoursAhead}`);
+                    node.log(
+                        `[DWD-Forecast] onlyFuture=${effectiveOnlyFuture} | hoursAhead=${effHoursAhead}`
+                    );
                 }
 
                 const cfg = {
@@ -1000,11 +1053,17 @@ module.exports = function (RED) {
                 const series = normalizeRecords(ts2, pa2, cfg);
 
                 if (node.diag && pa2 && Object.keys(pa2).length) {
-                    node.log(`[DWD-Forecast] Codes (Auszug): ${Object.keys(pa2).slice(0,20).join(", ")}`);
+                    node.log(
+                        `[DWD-Forecast] Codes (Auszug): ${Object.keys(pa2)
+                            .slice(0, 20)
+                            .join(", ")}`
+                    );
                 }
 
                 if (node.diag) {
-                    node.log(`[DWD-Forecast] Ausgabe-Datensätze: ${series.length}`);
+                    node.log(
+                        `[DWD-Forecast] Ausgabe-Datensätze: ${series.length}`
+                    );
                 }
 
                 const out = {
@@ -1016,23 +1075,34 @@ module.exports = function (RED) {
                         stale: false,
                         paramsAvailable: Object.keys(pa2).sort(),
                         windDirMode: node.windDirMode
-                    },
+                    }
                 };
 
                 saveLastGood(series, out._meta, station);
 
-                setStatus(`${series.length} Punkte`, "dot", "green");
+                setStatus(
+                    t("runtime.statusOk", { count: series.length }),
+                    "dot",
+                    "green"
+                );
                 node.send(out);
             } catch (err) {
                 if (node.staleOnError) {
                     const sent = sendStaleIfAvailable();
                     if (sent) return;
                 }
-                node.error(`DWD-Forecast Fehler: ${err && err.message ? err.message : String(err)}`, err);
-                setStatus("Fehler", "ring", "red");
+
+                const errMsg =
+                    err && err.message ? err.message : String(err);
+                node.error(
+                    t("runtime.errorFetch", { error: errMsg }),
+                    err
+                );
+                setStatus(t("runtime.statusError"), "ring", "red");
             }
         }
 
+        // ---- Auto-Refresh Timer ----
         function scheduleRefresh() {
             if (refreshTimer) {
                 clearInterval(refreshTimer);
@@ -1044,6 +1114,7 @@ module.exports = function (RED) {
             }
         }
 
+        // ---- Event-Handler ----
         node.on("input", runFetch);
 
         node.on("close", () => {
@@ -1051,11 +1122,14 @@ module.exports = function (RED) {
             setStatus("");
         });
 
+        // Initialisierung
         scheduleRefresh();
         if (node.fetchOnDeploy) {
-            runFetch({}).catch(() => {});
+            runFetch({}).catch(() => {
+                // Fehler werden in runFetch geloggt
+            });
         } else {
-            setStatus("bereit");
+            setStatus(t("runtime.statusReady"));
         }
     }
 

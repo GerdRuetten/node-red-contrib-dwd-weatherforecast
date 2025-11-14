@@ -1,157 +1,231 @@
 <!-- ===== Edit-Dialog Template ===== -->
 <script type="text/html" data-template-name="dwd-weatherforecast">
     <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="optional">
+        <label for="node-input-name" data-i18n="label.name">
+            <i class="fa fa-tag"></i> Name
+        </label>
+        <input type="text"
+               id="node-input-name"
+               data-i18n="[placeholder]label.defaultName"
+               placeholder="DWD Weather Forecast">
     </div>
 
     <div class="form-row">
-        <label for="node-input-station"><i class="fa fa-map-marker"></i> DWD Stations-ID</label>
-        <input type="text" id="node-input-station" placeholder="z. B. H721 (Köln/Bonn)">
+        <label for="node-input-station" data-i18n="label.station">
+            <i class="fa fa-map-marker"></i> DWD station ID
+        </label>
+        <input type="text"
+               id="node-input-station"
+               data-i18n="[placeholder]ui.stationPlaceholder"
+               placeholder="e.g. H721 (Cologne/Bonn)">
         <div class="form-tips">
-            <a href="https://www.dwd.de/DE/leistungen/klimadatendeutschland/statliste/statlex_html.html" target="_blank">
-                Liste der DWD Stations-IDs anzeigen
+            <a href="https://www.dwd.de/DE/leistungen/klimadatendeutschland/statliste/statlex_html.html"
+               target="_blank"
+               rel="noreferrer noopener">
+                DWD station list
             </a>
         </div>
     </div>
 
     <div class="form-row">
-        <label for="node-input-sourceUrl"><i class="fa fa-link"></i> Source-URL</label>
-        <input type="text" id="node-input-sourceUrl" placeholder="Template mit {station}">
-        <div class="form-tips">
-            Standard: <code>https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz</code>
-            (Platzhalter <code>{station}</code> wird ersetzt).
+        <label for="node-input-sourceUrl" data-i18n="label.sourceUrl">
+            <i class="fa fa-link"></i> Source URL
+        </label>
+        <input type="text"
+               id="node-input-sourceUrl"
+               data-i18n="[placeholder]ui.sourceUrlPlaceholder"
+               placeholder="Template with {station}">
+        <div class="form-tips" data-i18n="[html]ui.sourceUrlDefaultNote">
+            Default: template based on the official DWD MOSMIX-L URL. The placeholder {station} will be replaced.
         </div>
     </div>
 
-    <hr>
+    <hr/>
 
     <div class="form-row">
-        <label for="node-input-fetchOnDeploy"><i class="fa fa-refresh"></i> Beim Deploy abrufen</label>
-        <input type="checkbox" id="node-input-fetchOnDeploy">
-        <div class="form-tips">Daten direkt beim DWD abrufen.</div>
-    </div>
-
-    <div class="form-row">
-        <label for="node-input-autoRefresh"><i class="fa fa-clock-o"></i> Auto-Refresh (Sek.)</label>
-        <input type="number" id="node-input-autoRefresh" min="0" max="86400" step="1">
-        <div class="form-tips">0 = kein automatisches Nachladen.</div>
-    </div>
-
-    <div class="form-row">
-        <label for="node-input-maxHours"><i class="fa fa-hourglass-half"></i> Vorlauf (Std.)</label>
-        <input type="number" id="node-input-maxHours" min="0" max="240" step="1" placeholder="0 = alle">
-        <div class="form-tips">Begrenzt die Vorhersage zeitlich (z. B. 24 = nur die nächsten 24 Stunden).</div>
+        <label for="node-input-fetchOnDeploy" data-i18n="label.fetchOnDeploy">
+            <i class="fa fa-refresh"></i> Fetch on deploy
+        </label>
+        <input type="checkbox" id="node-input-fetchOnDeploy" style="width:auto;">
+        <div class="form-tips" data-i18n="ui.staleOnErrorTip">
+            Enable an immediate fetch when the flow is deployed.
+        </div>
     </div>
 
     <div class="form-row">
-        <label for="node-input-staleOnError"><i class="fa fa-undo"></i> Fallback</label>
-        <input type="checkbox" id="node-input-staleOnError">
-        <div class="form-tips">Bei Fehler letzte erfolgreiche Daten senden (stale).</div>
+        <label for="node-input-autoRefresh" data-i18n="label.autoRefresh">
+            <i class="fa fa-clock-o"></i> Auto-refresh (sec)
+        </label>
+        <input type="number"
+               id="node-input-autoRefresh"
+               min="0"
+               max="86400"
+               step="1">
+        <div class="form-tips" data-i18n="ui.autoRefreshTip">
+            0 = no automatic refresh.
+        </div>
     </div>
 
     <div class="form-row">
-        <label for="node-input-onlyFuture"><i class="fa fa-filter"></i> Nur zukünftige Zeitpunkte</label>
-        <input type="checkbox" id="node-input-onlyFuture">
-        <div class="form-tips">Historischen Daten werden herausgefiltert.</div>
-    </div>
-
-    <hr>
-
-    <div class="form-row">
-        <label><i class="fa fa-balance-scale"></i> Ausgabe-Optionen</label>
-    </div>
-    <div class="form-row">
-        <label for="node-input-coreOnly">Nur Kernfelder</label>
-        <input type="checkbox" id="node-input-coreOnly">
-    </div>
-    <div class="form-row">
-        <label for="node-input-toC">Temperatur in °C</label>
-        <input type="checkbox" id="node-input-toC" checked>
-    </div>
-    <div class="form-row">
-        <label for="node-input-windToKmh">Windgeschwindigkeit in km/h</label>
-        <input type="checkbox" id="node-input-windToKmh" checked>
-    </div>
-    <div class="form-row">
-        <label for="node-input-pressureToHpa">Druck in hPa</label>
-        <input type="checkbox" id="node-input-pressureToHpa" checked>
-    </div>
-    <div class="form-row">
-        <label for="node-input-visibilityToKm">Sichtweite in km</label>
-        <input type="checkbox" id="node-input-visibilityToKm" checked>
+        <label for="node-input-maxHours" data-i18n="label.maxHours">
+            <i class="fa fa-hourglass-half"></i> Lead time (hours)
+        </label>
+        <input type="number"
+               id="node-input-maxHours"
+               min="0"
+               max="240"
+               step="1"
+               data-i18n="[placeholder]ui.maxHoursPlaceholder"
+               placeholder="0 = all">
+        <div class="form-tips" data-i18n="ui.maxHoursTip">
+            Limits the forecast horizon (e.g. 24 = next 24 hours). 0 = all available data.
+        </div>
     </div>
 
     <div class="form-row">
-        <label for="node-input-windDirMode"><i class="fa fa-compass"></i> Windrichtung als Text</label>
-        <select id="node-input-windDirMode">
-            <option value="deg">Gradzahl (nur windDir)</option>
-            <option value="8">8-teilig (N, NO, O, SO, S, SW, W, NW)</option>
-            <option value="16">16-teilig (N, NNO, NO, ONO, O, …)</option>
+        <label for="node-input-onlyFuture" data-i18n="label.onlyFuture">
+            <i class="fa fa-step-forward"></i> Only future timestamps
+        </label>
+        <input type="checkbox" id="node-input-onlyFuture" style="width:auto;">
+        <div class="form-tips" data-i18n="ui.onlyFutureTip">
+            Filter out timestamps that are already in the past.
+        </div>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-staleOnError" data-i18n="label.staleOnError">
+            <i class="fa fa-hourglass-half"></i> Fallback on error
+        </label>
+        <input type="checkbox" id="node-input-staleOnError" style="width:auto;">
+        <div class="form-tips" data-i18n="ui.staleOnErrorTip">
+            If enabled, the node sends the last successful data when a fetch fails (stale).
+        </div>
+    </div>
+
+    <hr/>
+
+    <div class="form-row">
+        <label data-i18n="label.outputOptions">
+            <i class="fa fa-sliders"></i> Output options
+        </label>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-coreOnly" data-i18n="label.coreOnly">
+            <i class="fa fa-filter"></i> Core fields only
+        </label>
+        <input type="checkbox" id="node-input-coreOnly" style="width:auto;">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-toC" data-i18n="label.toC">
+            <i class="fa fa-thermometer-half"></i> Temperature in °C
+        </label>
+        <input type="checkbox" id="node-input-toC" style="width:auto;">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-windToKmh" data-i18n="label.windToKmh">
+            <i class="fa fa-flag"></i> Wind speed in km/h
+        </label>
+        <input type="checkbox" id="node-input-windToKmh" style="width:auto;">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-pressureToHpa" data-i18n="label.pressureToHpa">
+            <i class="fa fa-tachometer"></i> Pressure in hPa
+        </label>
+        <input type="checkbox" id="node-input-pressureToHpa" style="width:auto;">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-visibilityToKm" data-i18n="label.visibilityToKm">
+            <i class="fa fa-eye"></i> Visibility in km
+        </label>
+        <input type="checkbox" id="node-input-visibilityToKm" style="width:auto;">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-windDirMode" data-i18n="label.windDirMode">
+            <i class="fa fa-compass"></i> Wind direction as text
+        </label>
+        <select id="node-input-windDirMode" style="width: 100%;">
+            <option value="deg" data-i18n="ui.windDirModeDeg">Degrees only</option>
+            <option value="8" data-i18n="ui.windDirMode8">8 sectors (N, NE, E, SE, S, SW, W, NW)</option>
+            <option value="16" data-i18n="ui.windDirMode16">16 sectors (N, NNE, NE, ENE, E, …)</option>
         </select>
-        <div class="form-tips">Bei 8/16-teilig wird zusätzlich <code>windDirCardinal</code> ausgegeben.</div>
+        <div class="form-tips" data-i18n="ui.windDirModeTip">
+            In 8/16 sector mode an additional field <code>windDirCardinal</code> is added.
+        </div>
     </div>
-
-    <hr>
 
     <div class="form-row">
-        <label for="node-input-diag"><i class="fa fa-bug"></i> Diagnose aktivieren</label>
-        <input type="checkbox" id="node-input-diag">
+        <label for="node-input-diag" data-i18n="label.diag">
+            <i class="fa fa-bug"></i> Enable diagnostics
+        </label>
+        <input type="checkbox" id="node-input-diag" style="width:auto;">
+        <div class="form-tips" data-i18n="ui.diagTip">
+            Writes additional diagnostic messages into the Node-RED log.
+        </div>
     </div>
 
-    <hr>
+    <hr/>
+
     <div class="form-tips">
-        <b>Hinweis:</b> Datenquelle ist die DWD MOSMIX-Vorhersage (L-Version). Aktualisierung idR stündlich.
-        Mehr Infos: <a href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank">DWD Open Data</a>.
+        <strong data-i18n="ui.hintHeader">Note</strong><br/>
+        <span data-i18n="ui.hintText">
+            Data source is the DWD MOSMIX L forecast. Usually updated hourly. For details see DWD Open Data.
+        </span>
     </div>
 </script>
 
-<!-- ===== Help-Tab ===== -->
-<script type="text/markdown" data-help-name="dwd-weatherforecast">
-    **DWD-Weatherforecast**
-    Liest die DWD MOSMIX-Vorhersage für eine Station (z. B. **H721**) aus dem KMZ/KML-Feed, parst die Zeitreihen und gibt sie als JSON-Serie aus.
-
-    **Wichtige Felder:**
-    - *Stations-ID* (z. B. H721).
-    - *Source-URL*: Template mit `{station}`-Platzhalter (Standard ist vorbelegt).
-    - *Beim Deploy abrufen*, *Auto-Refresh (Sek.)* und *Vorlauf (Stunden)* steuern Abruf & Umfang.
-    - *Nur Kernfelder* liefert kompakten Payload. Umrechnungen schalten Einheiten um (°C, km/h, hPa, km).
-    - *Windrichtung als Text*: optional zusätzliche Himmelsrichtung in 8/16-Teilung als `windDirCardinal`.
-    - *Diagnose aktivieren* schreibt zusätzliche Logs in die Node-RED-Konsole.
-</script>
-
-<!-- ===== Registrierung ===== -->
 <script type="text/javascript">
-    (function() {
-        RED.nodes.registerType("dwd-weatherforecast", {
-            category: "DWD",
-            color: "#4C8EDA",
-            icon: "font-awesome/fa-cloud",
+    (function () {
+        RED.nodes.registerType('dwd-weatherforecast', {
+            category: 'weather',
+            color: '#9ed2f6',
+            paletteLabel: RED._('node-red-contrib-dwd-weatherforecast/dwd-weatherforecast:paletteLabel'),
+            defaults: {
+                name:           { value: "" },
+                station:        { value: "" },
+                sourceUrl:      {
+                    value: "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz"
+                },
+                fetchOnDeploy:  { value: true },
+                autoRefresh: {
+                    value: 0,
+                    validate: function (v) {
+                        if (v === "" || v === null || v === undefined) return true;
+                        const n = Number(v);
+                        return !isNaN(n) && n >= 0;
+                    }
+                },
+                maxHours: {
+                    value: 0,
+                    validate: function (v) {
+                        if (v === "" || v === null || v === undefined) return true;
+                        const n = Number(v);
+                        return !isNaN(n) && n >= 0;
+                    }
+                },
+                staleOnError:  { value: true },
+                onlyFuture:    { value: true },
+                coreOnly:      { value: false },
+                toC:           { value: true },
+                windToKmh:     { value: true },
+                pressureToHpa: { value: true },
+                visibilityToKm:{ value: true },
+                windDirMode:   { value: "deg" },
+                diag:          { value: false }
+            },
             inputs: 1,
             outputs: 1,
-            defaults: {
-                name:        { value: "" },
-                station:     { value: "", required: true },
-                sourceUrl:   { value: "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz" },
-                fetchOnDeploy:{ value: true },
-                autoRefresh: { value: 0 },
-                maxHours:    { value: 0 },
-                coreOnly:    { value: false },
-                toC:         { value: true },
-                windToKmh:   { value: true },
-                pressureToHpa:{ value: true },
-                visibilityToKm:{ value: true },
-                windDirMode: { value: "deg" },   // NEW
-                diag:        { value: false },
-                staleOnError:{ value: false },
-                onlyFuture:  { value: true }
+            icon: "font-awesome/fa-cloud",
+            label: function () {
+                return this.name || this._("label.defaultName") || "DWD Weather Forecast";
             },
-            label: function() {
-                return this.name || "DWD-Weatherforecast";
-            },
-            oneditprepare: function() {
-                $("#node-input-autoRefresh").attr({ min: 0, max: 86400, step: 1 });
-                $("#node-input-maxHours").attr({ min: 0, max: 240, step: 1 });
+            labelStyle: function () {
+                return this.name ? "node_label_italic" : "";
             }
         });
     })();
@@ -167,5 +241,14 @@
         color: #666;
         margin-left: 180px;
         line-height: 1.4em;
+    }
+</style>
+<style>
+    .form-tips code {
+        white-space: normal !important;
+        word-break: break-all;
+    }
+    .form-tips {
+        max-width: 100%;
     }
 </style>

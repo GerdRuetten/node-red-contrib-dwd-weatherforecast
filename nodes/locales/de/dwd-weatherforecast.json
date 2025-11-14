@@ -1,0 +1,48 @@
+{
+  "paletteLabel": "DWD-Wettervorhersage",
+  "label": {
+    "defaultName": "DWD-Wettervorhersage",
+    "name": "Name",
+    "station": "DWD-Stations-ID",
+    "sourceUrl": "Quell-URL",
+    "fetchOnDeploy": "Beim Deploy abrufen",
+    "autoRefresh": "Auto-Refresh (Sek.)",
+    "maxHours": "Vorlauf (Std.)",
+    "staleOnError": "Fallback bei Fehler",
+    "onlyFuture": "Nur zukünftige Zeitpunkte",
+    "outputOptions": "Ausgabe-Optionen",
+    "coreOnly": "Nur Kernfelder",
+    "toC": "Temperatur in °C",
+    "windToKmh": "Windgeschwindigkeit in km/h",
+    "pressureToHpa": "Druck in hPa",
+    "visibilityToKm": "Sichtweite in km",
+    "windDirMode": "Windrichtung als Text",
+    "diag": "Diagnose aktivieren"
+  },
+  "ui": {
+    "stationPlaceholder": "z. B. H721 (Köln/Bonn)",
+    "sourceUrlPlaceholder": "Template mit {station}",
+    "sourceUrlDefaultNote": "Standard: <code>https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz</code><br>(Platzhalter <code>{station}</code> wird ersetzt).",    "autoRefreshTip": "0 = kein automatisches Nachladen.",
+    "maxHoursPlaceholder": "0 = alle",
+    "maxHoursTip": "Begrenzt die Vorhersage zeitlich (z. B. 24 = nur die nächsten 24 Stunden).",
+    "staleOnErrorTip": "Bei Fehler letzte erfolgreiche Daten senden (stale).",
+    "onlyFutureTip": "Historische Zeitpunkte werden herausgefiltert.",
+    "outputHeader": "Ausgabe-Optionen",
+    "windDirModeDeg": "Gradzahl (nur windDir)",
+    "windDirMode8": "8-teilig (N, NO, O, SO, S, SW, W, NW)",
+    "windDirMode16": "16-teilig (N, NNO, NO, ONO, O, …)",
+    "windDirModeTip": "Bei 8/16-teilig wird zusätzlich windDirCardinal ausgegeben.",
+    "diagTip": "Schreibt zusätzliche Diagnose-Meldungen ins Node-RED-Log.",
+    "hintHeader": "Hinweis",
+    "hintText": "Datenquelle ist die DWD MOSMIX-L-Vorhersage. Aktualisierung i. d. R. stündlich. Mehr Infos unter DWD Open Data."
+  },
+  "runtime": {
+    "statusLoading": "lade…",
+    "statusReady": "bereit",
+    "statusOk": "__count__ Punkte",
+    "statusError": "Fehler",
+    "statusStale": "stale (__count__)",
+    "errorStationMissing": "Stations-ID fehlt",
+    "errorFetch": "DWD-Vorhersage Fehler: __error__"
+  }
+}

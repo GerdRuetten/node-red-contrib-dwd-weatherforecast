@@ -1,0 +1,47 @@
+{
+  "paletteLabel": "DWD Weather Forecast",
+  "label": {
+    "defaultName": "DWD Weather Forecast",
+    "name": "Name",
+    "station": "DWD station ID",
+    "sourceUrl": "Source URL",
+    "fetchOnDeploy": "Fetch on deploy",
+    "autoRefresh": "Auto-refresh (sec)",
+    "maxHours": "Lead time (hours)",
+    "staleOnError": "Fallback on error",
+    "onlyFuture": "Only future timestamps",
+    "outputOptions": "Output options",
+    "coreOnly": "Core fields only",
+    "toC": "Temperature in °C",
+    "windToKmh": "Wind speed in km/h",
+    "pressureToHpa": "Pressure in hPa",
+    "visibilityToKm": "Visibility in km",
+    "windDirMode": "Wind direction as text",
+    "diag": "Enable diagnostics"
+  },
+  "ui": {
+    "stationPlaceholder": "e.g. H721 (Cologne/Bonn)",
+    "sourceUrlPlaceholder": "Template with {station}",
+    "sourceUrlDefaultNote": "Default: <code>https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz</code><br>(Placeholder <code>{station}</code> will be replaced).",    "autoRefreshTip": "0 = no automatic refresh.",
+    "maxHoursPlaceholder": "0 = all",
+    "maxHoursTip": "Limits the forecast horizon (e.g. 24 = next 24 hours).",
+    "staleOnErrorTip": "Send last successful data on error (stale).",
+    "onlyFutureTip": "Filter out historic timestamps.",
+    "outputHeader": "Output options",
+    "windDirModeDeg": "Degrees only (windDir)",
+    "windDirMode8": "8 sectors (N, NE, E, SE, S, SW, W, NW)",
+    "windDirMode16": "16 sectors (N, NNE, NE, ENE, E, …)",
+    "windDirModeTip": "In 8/16 sector mode an additional field windDirCardinal is added.",
+    "diagTip": "Writes additional diagnostic messages to the Node-RED log.",
+    "hintHeader": "Note",
+    "hintText": "Data source is the DWD MOSMIX L forecast. Usually updated hourly. More info on DWD Open Data."
+  },
+  "runtime": {
+    "statusLoading": "loading…",
+    "statusReady": "ready",
+    "statusOk": "__count__ points",
+    "statusError": "error",
+    "statusStale": "stale (__count__)",
+    "errorStationMissing": "Station ID is missing",
+    "errorFetch": "DWD forecast error: __error__"
+  }}

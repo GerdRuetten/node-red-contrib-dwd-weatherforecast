@@ -1,0 +1,125 @@
+<script type="text/html" data-help-name="dwd-weatherforecast">
+    <p>
+        <b>DWD Weather Forecast</b> retrieves MOSMIX-L forecast data from the
+        German Weather Service (DWD) for a specific weather station.
+    </p>
+
+    <h3>Configuration</h3>
+    <dl>
+        <dt>Name</dt>
+        <dd>Optional display name used in the Node-RED editor.</dd>
+
+        <dt>DWD station ID</dt>
+        <dd>
+            Four-character station code (e.g. H721 for Cologne/Bonn).
+            A station list is available from the DWD website.
+        </dd>
+
+        <dt>Source URL</dt>
+        <dd>
+            Template URL for the MOSMIX-L forecast.
+            The placeholder <code>{station}</code> is automatically replaced with
+            the configured or incoming station ID.
+        </dd>
+
+        <dt>Fetch on deploy</dt>
+        <dd>Perform one immediate forecast fetch after deployment.</dd>
+
+        <dt>Auto-refresh (sec)</dt>
+        <dd>Optional interval for background updates. Use <code>0</code> to disable.</dd>
+
+        <dt>Lead time (hours)</dt>
+        <dd>
+            Limits the forecast horizon.
+            Example: <code>24</code> → only the next 24 hours are returned.
+            <code>0</code> → return all available forecast steps.
+        </dd>
+
+        <dt>Only future timestamps</dt>
+        <dd>
+            Remove to past timestamps before processing.
+            Useful when working with flows that only expect upcoming values.
+        </dd>
+
+        <dt>Fallback on error</dt>
+        <dd>
+            If enabled, the node re-emits the last successful result in case of
+            a fetch error (marked as <code>stale</code>).
+        </dd>
+
+        <dt>Output options</dt>
+        <dd>
+            Allows unit conversion and additional derived fields, including:
+            <ul>
+                <li>Temperature → °C</li>
+                <li>Wind speed → km/h</li>
+                <li>Air pressure → hPa</li>
+                <li>Visibility → km</li>
+                <li>
+                    Wind direction:
+                    <ul>
+                        <li><b>deg</b> – degrees</li>
+                        <li><b>8</b> – 8 cardinal directions (N, NE, …)</li>
+                        <li><b>16</b> – 16 sectors</li>
+                    </ul>
+                </li>
+            </ul>
+        </dd>
+
+        <dt>Diagnostics</dt>
+        <dd>
+            Writes detailed debug information to the Node-RED log.
+            Useful when troubleshooting parsing or filter issues.
+        </dd>
+    </dl>
+
+    <h3>Inputs</h3>
+    <p>
+        An incoming message triggers a fetch. The following fields override the
+        node configuration:
+    </p>
+    <dl>
+        <dt>msg.station</dt>
+        <dd>Override the station ID.</dd>
+
+        <dt>msg.sourceUrl</dt>
+        <dd>Override the URL template.</dd>
+
+        <dt>msg.hoursAhead</dt>
+        <dd>Override the time-window restriction.</dd>
+
+        <dt>msg.onlyFuture</dt>
+        <dd>Override the “only future timestamps” option.</dd>
+    </dl>
+
+    <h3>Outputs</h3>
+    <p>The node outputs a single message:</p>
+    <dl>
+        <dt>msg.payload</dt>
+        <dd>
+            Array of processed forecast points, already normalized and optionally
+            converted according to the output options.
+        </dd>
+
+        <dt>msg.station</dt>
+        <dd>Contains station ID and (if available) station name.</dd>
+
+        <dt>msg._meta</dt>
+        <dd>
+            Metadata such as:
+            <ul>
+                <li>source URL</li>
+                <li>number of points</li>
+                <li>applied filters</li>
+                <li>list of used MOSMIX parameters</li>
+                <li><code>stale: true</code> when fallback was used</li>
+            </ul>
+        </dd>
+    </dl>
+
+    <h3>Forecast Source</h3>
+    <p>
+        Data is retrieved from DWD MOSMIX-L forecast products, published on the
+        official DWD Open Data platform.
+    </p>
+</script>

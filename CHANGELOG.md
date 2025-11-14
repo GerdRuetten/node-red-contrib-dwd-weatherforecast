@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.3.0] - 2025-11-15
+### Added
+- Full internationalization (i18n) support for all UI elements.
+- Runtime messages localized via `RED._(...)`.
+- Editor UI now supports multi-language labels using `data-i18n`.
+- Help text moved to per-language files:
+    - `nodes/locales/en-US/<node>.html`
+    - `nodes/locales/de/<node>.html`
+- Automatic language switching based on Node-RED editor settings
+  (“Browser”, “Deutsch”, “English”).
+
+### Changed
+- Updated internal structure to use the official Node-RED i18n layout:
+    - `nodes/locales/<lang>/<node>.json`
+    - `nodes/locales/<lang>/<node>.html`
+- Simplified template HTML by removing inline help text.
+
 ## [1.2.1] - 2025-11-06
 ### Docs
 - Unified README style and structure with other DWD modules for consistent documentation.
