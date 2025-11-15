@@ -22,7 +22,7 @@ jobs:
         id: tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Update version in package.json
         run: |
@@ -45,12 +45,10 @@ jobs:
           git config user.name  "github-actions"
           git config user.email "github-actions@github.com"
           git add package.json
-          # wenn es nichts zu committen gibt, abbrechen ohne Fehler
           if git diff --cached --quiet; then
             echo "No version change to commit."
           else
             git commit -m "chore: set version to ${{ steps.tag.outputs.VERSION }}"
-            # Wir sind in einem detached HEAD (Tag), also explizit auf main pushen:
             git push origin HEAD:main
           fi
 
@@ -74,3 +72,5 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
+          # Beta/Alpha/RC-Tags automatisch als Pre-Release markieren
+          prerelease: ${{ contains(github.ref_name, '-beta.') || contains(github.ref_name, '-alpha.') || contains(github.ref_name, '-rc.') }}
