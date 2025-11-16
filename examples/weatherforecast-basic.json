@@ -1,48 +1,81 @@
 [
   {
-    "id": "inj2",
+    "id": "wfex1",
+    "type": "tab",
+    "label": "DWD Weatherforecast - Basic Example"
+  },
+  {
+    "id": "wf_comment",
+    "type": "comment",
+    "z": "wfex1",
+    "name": "DWD Weather Forecast - Basic Example",
+    "info": "Demonstrates basic usage of the DWD Weatherforecast node:\n\n- manual trigger via Inject node\n- configuration of station ID (e.g. H721 for Cologne/Bonn)\n- viewing the full forecast payload in a Debug node\n\nYou can combine this with dashboard nodes or scorecards.",
+    "x": 360,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "wf_inject",
     "type": "inject",
-    "z": "flow2",
-    "name": "manual trigger",
-    "props": [{"p":"payload"}],
+    "z": "wfex1",
+    "name": "Trigger forecast",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
     "repeat": "",
-    "once": true,
-    "onceDelay": 0.2,
+    "once": false,
+    "onceDelay": 0.1,
     "topic": "",
+    "payload": "",
     "payloadType": "date",
-    "x": 180,
-    "y": 200,
-    "wires": [["dwd2"]]
+    "x": 170,
+    "y": 140,
+    "wires": [
+      [
+        "wf_node"
+      ]
+    ]
   },
   {
-    "id": "dwd2",
+    "id": "wf_node",
     "type": "dwd-weatherforecast",
-    "z": "flow2",
-    "name": "DWD Forecast (MOSMIX_L)",
+    "z": "wfex1",
+    "name": "",
     "station": "H721",
-    "useMosmixL": true,
-    "includeCore": true,
-    "includeWind": true,
-    "includePressure": true,
-    "includeVisibility": true,
-    "fireOnDeploy": false,
-    "autoRefreshSec": 0,
-    "x": 430,
-    "y": 200,
-    "wires": [["dbg2"]]
+    "sourceUrl": "",
+    "fetchOnDeploy": true,
+    "autoRefresh": 0,
+    "maxHours": 24,
+    "staleOnError": true,
+    "onlyFuture": true,
+    "coreOnly": false,
+    "toC": true,
+    "windToKmh": true,
+    "pressureToHpa": true,
+    "visibilityToKm": true,
+    "windDirMode": "16",
+    "diag": false,
+    "x": 400,
+    "y": 140,
+    "wires": [
+      [
+        "wf_debug"
+      ]
+    ]
   },
   {
-    "id": "dbg2",
+    "id": "wf_debug",
     "type": "debug",
-    "z": "flow2",
-    "name": "forecast",
+    "z": "wfex1",
+    "name": "Forecast result",
     "active": true,
     "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "true",
-    "x": 680,
-    "y": 200,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 640,
+    "y": 140,
     "wires": []
   }
 ]

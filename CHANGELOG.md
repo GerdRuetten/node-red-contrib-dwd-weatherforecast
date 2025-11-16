@@ -1,4 +1,29 @@
-# Changelog
+## Changelog
+
+All notable changes to this project will be documented in this file.
+
+## Unreleased
+
+- (none)
+
+## [1.4.0] - 2025-11-16
+### Added
+- Fully rewritten **English README** in modern structure (consistent with entire DWD node family)
+- Updated and standardised **example flow** (`examples/weatherforecast-basic.json`)
+- Added detailed installation instructions (including Palette Manager guidance)
+
+### Changed
+- Documentation structure unified across all DWD-related nodes (Pollen, Forecast, Warnings, Rainradar)
+- Improved i18n descriptions and clarified how translator files are organised
+- Refined configuration explanations (station ID, source URL, unit conversions, wind direction modes)
+- Cleanup and modernisation of help text references
+
+### Fixed
+- Removed outdated documentation sections
+- Minor markdown formatting corrections
+
+### CI
+- Automatically mark `-beta`, `-alpha` and `-rc` tags as **GitHub pre-releases**.
 
 ## [1.3.1] - 2025-11-15
 ### Fixed
