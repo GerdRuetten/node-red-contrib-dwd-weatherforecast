@@ -8,6 +8,10 @@ module.exports = function (RED) {
     const DEFAULT_URL_TEMPLATE =
         "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz";
 
+    // 🔑 i18n Namespace + Helper (global im Modul, für alle Funktionen)
+    const NS = "node-red-contrib-dwd-weatherforecast/dwd-weatherforecast";
+    const t = (key, opts) => RED._(`${NS}:${key}`, opts);
+
     // -------- utils ----------
     const asArray = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
     const safeNumber = (x) => {
@@ -636,11 +640,15 @@ module.exports = function (RED) {
             }
 
             if (rec.precipitation != null) {
-                const kind = "Regen";
-                const intensity = rec.precipitation < 0.3 ? "leicht"
-                    : rec.precipitation < 1.0 ? "mäßig"
-                        : "stark";
-                rec.precipitationText = `${kind} (${intensity}) – ${rec.precipitation} mm/h`;
+                const intensityKey =
+                    rec.precipitation < 0.3 ? "Light"
+                        : rec.precipitation < 1.0 ? "Moderate"
+                            : "Heavy";
+                const intensity = t("runtime.precipIntensity" + intensityKey);
+                rec.precipitationText = t("runtime.precipitationText", {
+                    intensity,
+                    value: rec.precipitation
+                });
             }
 
             out.push(rec);
@@ -814,10 +822,6 @@ module.exports = function (RED) {
     function DwdWeatherForecastNode(config) {
         RED.nodes.createNode(this, config);
         const node = this;
-
-        // i18n-Helfer: Runtime-Übersetzungen über RED._
-        const t = (key, opts) =>
-            RED._("node-red-contrib-dwd-weatherforecast/dwd-weatherforecast:" + key, opts);
 
         // ---- Konfiguration aus UI ----
         node.station = (config.station || "").toUpperCase().trim();

@@ -1,119 +1,92 @@
-<script type="text/html" data-help-name="dwd-weatherforecast">
+<script type="text/x-red" data-help-name="dwd-weatherforecast">
     <p>
-        <b>DWD Wettervorhersage</b> ruft MOSMIX-L-Prognosedaten des Deutschen
-        Wetterdienstes (DWD) für eine bestimmte Wetterstation ab.
+        Ruft die offizielle DWD MOSMIX_L-Vorhersage für eine einzelne Messstation ab
+        und stellt sie als Zeitreihe für weitere Flows (Dashboards, Auswertungen, Automationen) bereit.
     </p>
+
+    <h3>Eingaben</h3>
+    <dl class="message-properties">
+        <dt>msg.payload
+            <span class="property-type">beliebig</span>
+        </dt>
+        <dd>
+            Der Inhalt der eingehenden Nachricht wird vom Node nicht ausgewertet.
+            Jeder eingehende Trigger löst – sofern konfiguriert – einen neuen Abruf aus.
+        </dd>
+    </dl>
+
+    <h3>Ausgaben</h3>
+    <dl class="message-properties">
+        <dt>msg.payload
+            <span class="property-type">Array&lt;Object&gt;</span>
+        </dt>
+        <dd>
+            Array von Vorhersagepunkten in zeitlicher Reihenfolge.
+            Jeder Eintrag enthält mindestens Zeitstempel (<code>ts</code>, <code>iso</code>),
+            Temperatur, Wind, Luftfeuchte, Luftdruck, Sichtweite,
+            Bewölkung und Niederschlag (<code>precipitation</code>,
+            <code>precipitationText</code>).
+            Weitere Felder können je nach Konfiguration hinzukommen.
+        </dd>
+
+        <dt>msg.stationId
+            <span class="property-type">string</span>
+        </dt>
+        <dd>
+            Die verwendete DWD-Stations-ID.
+        </dd>
+
+        <dt>msg.meta
+            <span class="property-type">Object</span>
+        </dt>
+        <dd>
+            Metadaten zur Abfrage (Zeitpunkt, Quelle, ggf. Diagnose-Informationen).
+        </dd>
+    </dl>
 
     <h3>Konfiguration</h3>
     <dl>
-        <dt>Name</dt>
-        <dd>Optionaler Anzeigename im Node-RED-Editor.</dd>
-
         <dt>DWD-Stations-ID</dt>
         <dd>
-            Vierstelliger Stationscode (z. B. H721 für Köln/Bonn).
-            Eine vollständige Liste findet sich auf der DWD-Website.
+            Offizielle DWD-Kennung der Messstation (z.&nbsp;B. <code>H721</code> für Köln/Bonn).
+            Wird dieses Feld leer gelassen, schlägt der Node mit einem Fehlerstatus fehl.
         </dd>
 
         <dt>Quell-URL</dt>
         <dd>
-            Template-URL für die MOSMIX-L-Vorhersage.
-            Der Platzhalter <code>{station}</code> wird automatisch durch die
-            konfigurierte oder eingehende Stations-ID ersetzt.
+            URL-Template für die MOSMIX_L-KMZ-Datei.
+            Standardmäßig wird die offizielle DWD-Open-Data-URL verwendet.
         </dd>
 
         <dt>Beim Deploy abrufen</dt>
-        <dd>Beim Deploy einmalig abrufen.</dd>
-
-        <dt>Auto-Refresh (Sek.)</dt>
-        <dd>Optionales Intervall für automatische Abrufe. <code>0</code> = aus.</dd>
-
-        <dt>Vorlauf (Stunden)</dt>
         <dd>
-            Begrenzt den Zeitbereich der Vorhersage.
-            Beispiel: <code>24</code> → nur die nächsten 24 Stunden.
-            <code>0</code> → alle verfügbaren Vorhersagewerte.
+            Löst direkt nach dem Deploy einen Abruf aus, damit sofort Daten zur Verfügung stehen.
         </dd>
 
-        <dt>Nur zukünftige Zeitpunkte</dt>
-        <dd>Entfernt Werte aus der Vergangenheit vor der Weiterverarbeitung.</dd>
-
-        <dt>Fallback bei Fehler</dt>
+        <dt>Auto-Refresh</dt>
         <dd>
-            Wenn aktiviert, sendet der Node bei einem Fehler die letzten
-            erfolgreichen Daten erneut (als <code>stale</code> markiert).
+            Optionales Intervall (Sekunden) für wiederkehrende Abrufe,
+            ohne dass ein separater Inject-Node benötigt wird.
+        </dd>
+
+        <dt>Vorlauf / Nur zukünftige Zeitpunkte</dt>
+        <dd>
+            Beschränkt den Vorhersagezeitraum und filtert auf zukünftige Zeitstempel,
+            um historische MOSMIX-Daten auszublenden.
         </dd>
 
         <dt>Ausgabe-Optionen</dt>
         <dd>
-            Erlaubt verschiedene Umrechnungen und Zusatzfelder, u. a.:
-            <ul>
-                <li>Temperatur in °C</li>
-                <li>Windgeschwindigkeit in km/h</li>
-                <li>Luftdruck in hPa</li>
-                <li>Sichtweite in km</li>
-                <li>
-                    Windrichtung:
-                    <ul>
-                        <li><b>deg</b> – Gradzahl</li>
-                        <li><b>8</b> – 8 Himmelsrichtungen (N, NO, O, SO, …)</li>
-                        <li><b>16</b> – 16-teilige Richtungsskala</li>
-                    </ul>
-                </li>
-            </ul>
-        </dd>
-
-        <dt>Diagnose aktivieren</dt>
-        <dd>Schreibt detaillierte Debug-Informationen ins Node-RED-Log.</dd>
-    </dl>
-
-    <h3>Eingänge</h3>
-    <p>Eine eingehende Nachricht löst einen Abruf aus.
-        Folgende Felder können die Konfiguration überschreiben:</p>
-
-    <dl>
-        <dt>msg.station</dt>
-        <dd>Stations-ID überschreiben.</dd>
-
-        <dt>msg.sourceUrl</dt>
-        <dd>Quell-URL-Template überschreiben.</dd>
-
-        <dt>msg.hoursAhead</dt>
-        <dd>Zeitfenster überschreiben.</dd>
-
-        <dt>msg.onlyFuture</dt>
-        <dd>Option „nur zukünftige Werte“ überschreiben.</dd>
-    </dl>
-
-    <h3>Ausgänge</h3>
-    <p>Der Node gibt eine Nachricht mit folgendem Aufbau aus:</p>
-
-    <dl>
-        <dt>msg.payload</dt>
-        <dd>
-            Array verarbeiteter Vorhersagepunkte, optional umgerechnet und
-            normalisiert nach den Ausgabe-Optionen.
-        </dd>
-
-        <dt>msg.station</dt>
-        <dd>Enthält Stations-ID und ggf. Stationsnamen.</dd>
-
-        <dt>msg._meta</dt>
-        <dd>
-            Metadaten wie:
-            <ul>
-                <li>Quell-URL</li>
-                <li>Anzahl der Datenpunkte</li>
-                <li>Angewendete Filter</li>
-                <li>Liste der verwendeten MOSMIX-Parameter</li>
-                <li><code>stale: true</code>, wenn Fallback genutzt wurde</li>
-            </ul>
+            Steuern, ob nur Kernfelder (Minimal-Subset)
+            oder zusätzliche Komfortfelder (z.&nbsp;B. Windrichtung als Himmelsrichtung,
+            umgerechnete Einheiten) ausgegeben werden.
         </dd>
     </dl>
 
-    <h3>Datenquelle</h3>
-    <p>
-        Die Daten stammen aus dem MOSMIX-L-Vorhersageprodukt des DWD,
-        veröffentlicht über die DWD Open-Data-Plattform.
-    </p>
+    <h3>Hinweise</h3>
+    <ul>
+        <li>Die Daten stammen aus der DWD MOSMIX_L-Vorhersage und werden typischerweise stündlich aktualisiert.</li>
+        <li>Bei aktivierter Stale-Option bleibt bei Fehlern die letzte erfolgreiche Vorhersage im Kontext erhalten.</li>
+        <li>Mit der Option „Windrichtungsmodus“ kann zusätzlich <code>windDirCardinal</code> ausgegeben werden.</li>
+    </ul>
 </script>

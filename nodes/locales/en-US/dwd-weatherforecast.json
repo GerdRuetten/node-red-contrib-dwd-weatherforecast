@@ -22,7 +22,8 @@
   "ui": {
     "stationPlaceholder": "e.g. H721 (Cologne/Bonn)",
     "sourceUrlPlaceholder": "Template with {station}",
-    "sourceUrlDefaultNote": "Default: <code>https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz</code><br>(Placeholder <code>{station}</code> will be replaced).",    "autoRefreshTip": "0 = no automatic refresh.",
+    "sourceUrlDefaultNote": "Default: <code>https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz</code><br>(Placeholder <code>{station}</code> will be replaced).",
+    "autoRefreshTip": "0 = no automatic refresh.",
     "maxHoursPlaceholder": "0 = all",
     "maxHoursTip": "Limits the forecast horizon (e.g. 24 = next 24 hours).",
     "staleOnErrorTip": "Send last successful data on error (stale).",
@@ -43,5 +44,10 @@
     "statusError": "error",
     "statusStale": "stale (__count__)",
     "errorStationMissing": "Station ID is missing",
-    "errorFetch": "DWD forecast error: __error__"
-  }}
+    "errorFetch": "DWD forecast error: __error__",
+    "precipitationText": "Rain (__intensity__) – __value__ mm/h",
+    "precipIntensityLight": "light",
+    "precipIntensityModerate": "moderate",
+    "precipIntensityHeavy": "heavy"
+  }
+}

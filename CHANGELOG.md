@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 - (none)
 
+## [1.4.1] – 2025-11-26
+
+### Added
+- Introduced fully localised precipitation description (`precipitationText`) with dynamic interpolation for intensity and value.
+- Added new i18n keys for precipitation intensity levels (`precipIntensityLight`, `precipIntensityModerate`, `precipIntensityHeavy`) in all locale files.
+
+### Changed
+- Moved help text into dedicated, language-specific HTML files under `nodes/locales/<lang>/` according to official Node-RED i18n guidelines.
+- Centralised runtime translation helper (`t()`) at module level for consistent access across all functions.
+- Standardised interpolation syntax to `__variable__` for full compatibility with Node-RED’s i18n engine.
+- Unified i18n key structure to align with conventions used across the updated DWD node family.
+
+### Fixed
+- Corrected missing precipitation translation caused by non-interpolated placeholders.
+- Fixed a runtime error (`t is not defined`) by adjusting the translation helper scope.
+
 ## [1.4.0] - 2025-11-16
 ### Added
 - Fully rewritten **English README** in modern structure (consistent with entire DWD node family)
