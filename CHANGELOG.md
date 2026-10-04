@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-- (none)
+### Fixed
+- `msg.station.name` was not resolved for pure numeric WMO station IDs (e.g. `10962`): the ID check only recognised letter-led IDs like `K1174`, so the ID from `<name>` was mistaken for the station name and the `<description>` fallback was never reached. Both ID shapes are now recognised and the description fallback works for them (e.g. `10962` → `HOHENPEISS.BG`).
 
 ## [1.4.1] – 2025-11-26
 
