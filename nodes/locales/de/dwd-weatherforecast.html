@@ -22,25 +22,55 @@
         </dt>
         <dd>
             Array von Vorhersagepunkten in zeitlicher Reihenfolge.
-            Jeder Eintrag enthält mindestens Zeitstempel (<code>ts</code>, <code>iso</code>),
-            Temperatur, Wind, Luftfeuchte, Luftdruck, Sichtweite,
-            Bewölkung und Niederschlag (<code>precipitation</code>,
-            <code>precipitationText</code>).
-            Weitere Felder können je nach Konfiguration hinzukommen.
+            Jeder Eintrag enthält den Zeitstempel (<code>ts</code>, <code>iso</code>) und eine
+            <code>type</code>-Einordnung (<code>past</code>, <code>current</code>,
+            <code>forecast</code>), die Standardfelder (Temperatur, Taupunkt, Wind,
+            Luftfeuchte, Luftdruck, Sichtweite, Bewölkung, Niederschlag inkl.
+            <code>precipitationText</code>) sowie jedes konfigurierte Zusatzfeld.
+            Zusatzfelder mit zugeordneter Umrechnung werden gemäß den
+            Ausgabeoptionen umgerechnet (Temperatur in °C, Wind in km/h,
+            Druck in hPa, Sichtweite in km), alle anderen bleiben unverändert;
+            ein Feld ohne einen einzigen Wert im Zeitfenster fehlt in den
+            Datensätzen und wird in <code>msg.fields_not_found</code> gemeldet,
+            Felder mit Teil-Lücken behalten <code>null</code>-Stellen.
         </dd>
 
-        <dt>msg.stationId
-            <span class="property-type">string</span>
-        </dt>
-        <dd>
-            Die verwendete DWD-Stations-ID.
-        </dd>
-
-        <dt>msg.meta
+        <dt>msg.station
             <span class="property-type">Object</span>
         </dt>
         <dd>
-            Metadaten zur Abfrage (Zeitpunkt, Quelle, ggf. Diagnose-Informationen).
+            Die verwendete DWD-Station (<code>id</code> und aufgelöster <code>name</code>).
+        </dd>
+
+        <dt>msg.used_fields
+            <span class="property-type">Object</span>
+        </dt>
+        <dd>
+            Dictionary aller tatsächlich gelieferten Felder: Feldname auf
+            <code>{code, unit, de, en}</code> (MOSMIX-Code, Einheit, Beschreibung deutsch/englisch).
+            Bei angewendeter Umrechnung enthält <code>unit</code> die effektive Einheit,
+            <code>unit_original</code> die ursprüngliche MOSMIX-Einheit.
+        </dd>
+
+        <dt>msg.fields_not_found
+            <span class="property-type">Object</span>
+        </dt>
+        <dd>
+            Angeforderte Zusatzfelder, zu denen es im aktuellen Zeitfenster
+            keine Daten gab – gleiche Struktur wie <code>msg.used_fields</code>.
+            Diese Felder fehlen komplett in den Datensätzen; Felder mit Werten
+            nur an einzelnen Zeitpunkten bleiben in den Datensätzen, dort mit
+            <code>null</code>-Lücken. Die Standardfelder sind festes
+            Record-Schema: Sie bleiben auch ohne Werte in jedem Datensatz
+            (dann mit <code>null</code>) und erscheinen nicht hier.
+        </dd>
+
+        <dt>msg._meta
+            <span class="property-type">Object</span>
+        </dt>
+        <dd>
+            Metadaten zur Abfrage (URL, Datensatz-Anzahl, Stale-Flag,
+            verfügbare Parametercodes, Diagnose zu Zusatzfeldern).
         </dd>
     </dl>
 
@@ -75,11 +105,21 @@
             um historische MOSMIX-Daten auszublenden.
         </dd>
 
-        <dt>Ausgabe-Optionen</dt>
+        <dt>Ausgabeoptionen</dt>
         <dd>
             Steuern, ob nur Kernfelder (Minimal-Subset)
             oder zusätzliche Komfortfelder (z.&nbsp;B. Windrichtung als Himmelsrichtung,
             umgerechnete Einheiten) ausgegeben werden.
+        </dd>
+
+        <dt>Zusatzfelder</dt>
+        <dd>
+            Zusätzliche MOSMIX-Elemente (z.&nbsp;B. Sonnenscheindauer, Böen,
+            Gewitterwahrscheinlichkeit), die in jeden Datensatz aufgenommen werden –
+            auswählbar über die durchsuchbare Liste. Felder mit zugeordneter
+            Umrechnung werden gemäß den Ausgabeoptionen umgerechnet, alle anderen
+            bleiben unverändert; ein Feld ohne Werte im Zeitfenster fehlt in den
+            Datensätzen und wird in <code>msg.fields_not_found</code> gelistet.
         </dd>
     </dl>
 

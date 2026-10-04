@@ -4,6 +4,17 @@ module.exports = function (RED) {
     const AdmZip = require("adm-zip");
     const { parseStringPromise } = require("xml2js");
     const moment = require("moment-timezone");
+    const mosmix = require("./lib/mosmix-fields");
+
+    // Metadaten der MOSMIX-Elemente an den Node-RED-Editor ausliefern
+    // (wird vom Edit-Dialog fuer das durchsuchbare Multi-Select genutzt).
+    RED.httpAdmin.get(
+        "/mosmix-elements",
+        RED.auth.needsPermission("dwd-weatherforecast.read"),
+        (req, res) => {
+            res.json(mosmix.MOSMIX_ELEMENTS);
+        }
+    );
 
     const DEFAULT_URL_TEMPLATE =
         "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/{station}/kml/MOSMIX_L_LATEST_{station}.kmz";
@@ -577,7 +588,9 @@ module.exports = function (RED) {
         const getFirst = (codes, i) => {
             for (const code of codes) {
                 const p = params[code];
-                if (p && p.values[i] !== undefined) return p.values[i];
+                // null ueberspringen: Fallback-Quelle (z. B. neff fuer Neff)
+                // soll greifen, wenn die Primaerquelle nur null liefert.
+                if (p && p.values[i] != null) return p.values[i];
             }
             return null;
         };
@@ -586,9 +599,21 @@ module.exports = function (RED) {
         const A = 17.625, B = 243.04;
 
         const out = [];
+        const now = Date.now();
+        let currentAssigned = false;
         for (let i = 0; i < timeSteps.length; i++) {
             const ts = timeSteps[i];
             const iso = new Date(ts).toISOString();
+
+            let type;
+            if (ts < now) {
+                type = "past";
+            } else if (!currentAssigned) {
+                type = "current";
+                currentAssigned = true;
+            } else {
+                type = "forecast";
+            }
 
             const T_K   = getFirst(["TTT"], i);
             const Td_K  = getFirst(["Td"], i);
@@ -622,8 +647,9 @@ module.exports = function (RED) {
             if (cfg.visibilityToKm && visibility != null) visibility = +toKm(visibility).toFixed(1);
 
             const rec = {
-                ts, iso,
+                ts, iso, type,
                 temperature: temperature ?? null,
+                dewPoint: (cfg.toC && Td_K != null) ? +KtoC(Td_K).toFixed(2) : (Td_K ?? null),
                 windSpeed: windSpeed ?? null,
                 windDir: windDir ?? null,
                 pressure: pressure ?? null,
@@ -633,6 +659,17 @@ module.exports = function (RED) {
                 precipitation: precip ?? null,
                 precipitationText: null,
             };
+
+            // Zusätzliche MOSMIX-Felder generisch aus den geparsten Params
+            // übernehmen; fehlende Codes werden mit null belegt. Felder mit
+            // zugeordneter Conversion werden gemäß den Ausgabeoptionen
+            // (Toggles) umgerechnet, alle anderen bleiben unverändert.
+            for (const code of cfg.additional || []) {
+                const meta = mosmix.fieldMeta(code);
+                const p = params[code];
+                const raw = (p && p.values[i] !== undefined) ? p.values[i] : null;
+                rec[meta.fieldname] = mosmix.convertValue(code, raw, cfg);
+            }
 
             // Windrichtung als Text nach Wunsch
             if (cfg.windDirMode && cfg.windDirMode !== "deg") {
@@ -656,10 +693,13 @@ module.exports = function (RED) {
 
         if (cfg.coreOnly) {
             const core = [
-                "ts","iso",
-                "temperature","windSpeed","windDir","pressure",
+                "ts","iso","type",
+                "temperature","dewPoint","windSpeed","windDir","pressure",
                 "relHumidity","visibility","precipitation","precipitationText","cloudCover","windDirCardinal"
             ];
+            for (const name of cfg.additionalFieldNames || []) {
+                if (!core.includes(name)) core.push(name);
+            }
             return out.map((r) => {
                 const o = {};
                 for (const k of core) o[k] = r[k] ?? null;
@@ -833,6 +873,7 @@ module.exports = function (RED) {
             (config.hoursAhead != null ? config.hoursAhead : config.maxHours) || 0
         );
         node.coreOnly = !!config.coreOnly;
+        node.additionalFields = mosmix.parseFieldList(config.additionalFields);
         node.toC = config.toC !== false;
         node.windToKmh = config.windToKmh !== false;
         node.pressureToHpa = config.pressureToHpa !== false;
@@ -851,12 +892,14 @@ module.exports = function (RED) {
         const ctx = node.context();
         const CTX_KEY = "lastGood";
 
-        function saveLastGood(series, meta, station) {
+        function saveLastGood(series, meta, station, usedFields, fieldsNotFound) {
             ctx.set(CTX_KEY, {
                 at: Date.now(),
                 station,
                 series,
-                meta
+                meta,
+                usedFields,
+                fieldsNotFound
             });
         }
 
@@ -868,6 +911,8 @@ module.exports = function (RED) {
             const out = {
                 payload: last.series,
                 station: { id: last.station, name: last.meta?.stationName || null },
+                used_fields: last.usedFields,
+                fields_not_found: last.fieldsNotFound,
                 _meta: { ...(last.meta || {}), stale: true }
             };
 
@@ -1054,6 +1099,43 @@ module.exports = function (RED) {
                     windDirMode: node.windDirMode // NEW
                 };
 
+                // Zusätzliche Felder: per-msg-Override (msg.additional_fields)
+                // bewusst deaktiviert – die Input-Verarbeitung ist Thema eines
+                // separaten PRs. Aktuell gilt: msg ist reiner Trigger.
+                // const requestedAdditional =
+                //     msg && msg.additional_fields != null
+                //         ? mosmix.parseFieldList(msg.additional_fields)
+                //         : node.additionalFields;
+                const requestedAdditional = node.additionalFields;
+                const resolved = mosmix.resolveFields(requestedAdditional);
+                // used_fields listet nur tatsächlich gelieferte Felder.
+                // Zusatzfelder ohne einen einzigen Wert im Zeitfenster
+                // kommen gar nicht erst in die Records und landen in
+                // fields_not_found (analoge Struktur); Felder mit
+                // Teil-Lücken bleiben wie gehabt mit null je Record.
+                // Standardfelder sind festes Record-Schema (Legacy) und
+                // bleiben auch ohne Werte als null in den Records,
+                // tauchen aber nicht in fields_not_found auf.
+                const availableCodes = resolved.fields.filter((code) =>
+                    mosmix.fieldAvailable(code, pa2)
+                );
+                const missingCodes = resolved.fields.filter(
+                    (code) => !availableCodes.includes(code)
+                );
+                cfg.additional = resolved.additional.filter((code) =>
+                    availableCodes.includes(code)
+                );
+                cfg.additionalFieldNames = cfg.additional.map(
+                    (code) => mosmix.fieldMeta(code).fieldname
+                );
+                const usedFields = mosmix.buildUsedFields(availableCodes, {
+                    windDirMode: node.windDirMode,
+                    toggles: cfg
+                });
+                const fieldsNotFound = mosmix.fieldsDict(
+                    missingCodes.filter((code) => resolved.additional.includes(code))
+                );
+
                 const series = normalizeRecords(ts2, pa2, cfg);
 
                 if (node.diag && pa2 && Object.keys(pa2).length) {
@@ -1073,16 +1155,23 @@ module.exports = function (RED) {
                 const out = {
                     payload: series,
                     station: { id: station, name: stationName || null },
+                    used_fields: usedFields,
+                    fields_not_found: fieldsNotFound,
                     _meta: {
                         url,
                         count: series.length,
                         stale: false,
                         paramsAvailable: Object.keys(pa2).sort(),
-                        windDirMode: node.windDirMode
+                        windDirMode: node.windDirMode,
+                        additionalFields: resolved.additional,
+                        additionalFieldsSkipped: resolved.skipped,
+                        additionalFieldsNotAvailable: resolved.additional
+                            .filter((code) => !mosmix.fieldAvailable(code, pa2))
+                            .sort()
                     }
                 };
 
-                saveLastGood(series, out._meta, station);
+                saveLastGood(series, out._meta, station, usedFields, fieldsNotFound);
 
                 setStatus(
                     t("runtime.statusOk", { count: series.length }),

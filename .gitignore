@@ -36,6 +36,9 @@ flows_*.json
 flows_*.backup
 *.cred
 lib/
+# Ausnahme: echte Modul-Quellen des Pakets (nicht Node-RED-Runtime-lib)
+!nodes/lib/
+!nodes/lib/**
 # Falls du unter /data arbeitest:
 data/*.json
 data/*.backup
@@ -75,3 +78,4 @@ tmp/
 *.bak
 Thumbs.db
 Desktop.ini
+GITHUB_CLASSIC_TOKEN

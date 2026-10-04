@@ -1,0 +1,1232 @@
+[
+  {
+    "code": "DD",
+    "fieldname": "windDir",
+    "unit": "0 bis 360 Grad",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Windrichtung",
+    "description_en": "Wind direction"
+  },
+  {
+    "code": "DRR1",
+    "fieldname": "precipitationDuration1h",
+    "unit": "s",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagsdauer innerhalb der letzten Stunde",
+    "description_en": "Duration of precipitation within the last hour"
+  },
+  {
+    "code": "E_DD",
+    "fieldname": "errorWindDir",
+    "unit": "00 bis 360",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Absolute Fehler: Windrichtung",
+    "description_en": "Absolute error wind direction"
+  },
+  {
+    "code": "E_FF",
+    "fieldname": "errorWindSpeed",
+    "unit": "m/s",
+    "conversion": "windToKmh",
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Absolute Fehler: Windgeschwindigkeit 10m über der Oberfläche",
+    "description_en": "Absolute error wind speed 10m above surface"
+  },
+  {
+    "code": "E_PPP",
+    "fieldname": "errorPressure",
+    "unit": "Pa",
+    "conversion": "pressureToHpa",
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Absoluter Fehler Oberflächendruck",
+    "description_en": "Absolute error surface pressure"
+  },
+  {
+    "code": "E_Td",
+    "fieldname": "errorDewPoint",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Absoluter Fehler-Taupunkt 2m über der Oberfläche",
+    "description_en": "Absolute error dew point 2m above surface"
+  },
+  {
+    "code": "E_TTT",
+    "fieldname": "errorTemperature",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Absolute Fehler: Temperatur 2m über der Oberfläche",
+    "description_en": "Absolute error temperature 2m above surface"
+  },
+  {
+    "code": "FF",
+    "fieldname": "windSpeed",
+    "unit": "m/s",
+    "conversion": "windToKmh",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Windgeschwindigkeit",
+    "description_en": "Wind speed"
+  },
+  {
+    "code": "FX1",
+    "fieldname": "windGust1h",
+    "unit": "m/s",
+    "conversion": "windToKmh",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Maximale Windböe innerhalb der letzten Stunde",
+    "description_en": "Maximum wind gust within the last hour"
+  },
+  {
+    "code": "FX3",
+    "fieldname": "windGust3h",
+    "unit": "m/s",
+    "conversion": "windToKmh",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Maximale Windböe innerhalb der letzten 3 Stunden",
+    "description_en": "Maximum wind gust within the last 3 hours"
+  },
+  {
+    "code": "FX625",
+    "fieldname": "gustProb25kn6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Böen> = 25kn innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of gusts >= 25kn within the last 6 hours"
+  },
+  {
+    "code": "FX640",
+    "fieldname": "gustProb40kn6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Böen> = 40kn innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of gusts >= 40kn within the last 6 hours"
+  },
+  {
+    "code": "FX655",
+    "fieldname": "gustProb55kn6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Böen> = 55kn innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of gusts >= 55kn within the last 6 hours"
+  },
+  {
+    "code": "FXh",
+    "fieldname": "windGust12h",
+    "unit": "m/s",
+    "conversion": "windToKmh",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Maximale Windböe innerhalb der letzten 12 Stunden",
+    "description_en": "Maximum wind gust within the last 12 hours"
+  },
+  {
+    "code": "FXh25",
+    "fieldname": "gustProb25kn12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit von Windböen> = 25kn innerhalb der letzten 12 Stunden",
+    "description_en": "Probability of wind gusts >= 25kn within the last 12 hours"
+  },
+  {
+    "code": "FXh40",
+    "fieldname": "gustProb40kn12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit von Windböen> = 40kn innerhalb der letzten 12 Stunden",
+    "description_en": "Probability of wind gusts >= 40kn within the last 12 hours"
+  },
+  {
+    "code": "FXh55",
+    "fieldname": "gustProb55kn12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit von Windböen> = 55kn innerhalb der letzten 12 Stunden",
+    "description_en": "Probability of wind gusts >= 55kn within the last 12 hours"
+  },
+  {
+    "code": "N",
+    "fieldname": "cloudCoverTotal",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Gesamte Wolkendecke",
+    "description_en": "Total cloud cover"
+  },
+  {
+    "code": "N05",
+    "fieldname": "cloudCoverLow500ft",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Bewölkung unter 500 ft",
+    "description_en": "Cloud cover below 500 ft."
+  },
+  {
+    "code": "Neff",
+    "fieldname": "cloudCover",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Effektive Wolkendecke",
+    "description_en": "Effective cloud cover"
+  },
+  {
+    "code": "Nh",
+    "fieldname": "cloudCoverHigh",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Hohe Wolkendecke (> 7 km)",
+    "description_en": "High cloud cover (>7 km)"
+  },
+  {
+    "code": "Nl",
+    "fieldname": "cloudCoverLow",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niedrige Bewölkung (weniger als 2 km)",
+    "description_en": "Low cloud cover (lower than 2 km)"
+  },
+  {
+    "code": "Nlm",
+    "fieldname": "cloudCoverLowMid",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Bewölkt niedrige und mittlere Wolken unter 7000 m",
+    "description_en": "Cloud cover low and mid level clouds below 7000 m"
+  },
+  {
+    "code": "Nm",
+    "fieldname": "cloudCoverMid",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Mittlere Wolkendecke (2-7 km)",
+    "description_en": "Midlevel cloud cover (2-7 km)"
+  },
+  {
+    "code": "PEvap",
+    "fieldname": "evapotranspiration24h",
+    "unit": "kg / m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Mögliche Evapotranspiration innerhalb der letzten 24 Stunden",
+    "description_en": "Potential evapotranspiration within the last 24 hours"
+  },
+  {
+    "code": "PPPP",
+    "fieldname": "pressure",
+    "unit": "Pa",
+    "conversion": "pressureToHpa",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Luftdruck, reduziert",
+    "description_en": "Surface pressure, reduced"
+  },
+  {
+    "code": "PSd00",
+    "fieldname": "sunshineProbGt0",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: relative Sonnenscheindauer> 0% innerhalb von 24 Stunden",
+    "description_en": "Probability: relative sunshine duration > 0 % within 24 hours"
+  },
+  {
+    "code": "PSd30",
+    "fieldname": "sunshineProbGt30",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: relative Sonnenscheindauer> 30% innerhalb von 24 Stunden",
+    "description_en": "Probability: relative sunshine duration > 30 % within 24 hours"
+  },
+  {
+    "code": "PSd60",
+    "fieldname": "sunshineProbGt60",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: relative Sonnenscheindauer> 60% innerhalb von 24 Stunden",
+    "description_en": "Probability: relative sunshine duration > 60 % within 24 hours"
+  },
+  {
+    "code": "R101",
+    "fieldname": "precipProb01mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,1 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 0.1 mm during the last hour"
+  },
+  {
+    "code": "R102",
+    "fieldname": "precipProb02mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,2 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 0.2 mm during the last hour"
+  },
+  {
+    "code": "R103",
+    "fieldname": "precipProb03mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,3 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 0.3 mm during the last hour"
+  },
+  {
+    "code": "R105",
+    "fieldname": "precipProb05mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,5 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 0.5 mm during the last hour"
+  },
+  {
+    "code": "R107",
+    "fieldname": "precipProb07mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,7 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 0.7 mm during the last hour"
+  },
+  {
+    "code": "R110",
+    "fieldname": "precipProb1mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 1,0 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 1.0 mm during the last hour"
+  },
+  {
+    "code": "R120",
+    "fieldname": "precipProb2mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 2,0 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 2.0 mm during the last hour"
+  },
+  {
+    "code": "R130",
+    "fieldname": "precipProb3mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 3,0 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 3.0 mm during the last hour"
+  },
+  {
+    "code": "R150",
+    "fieldname": "precipProb5mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 5,0 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 5.0 mm during the last hour"
+  },
+  {
+    "code": "R600",
+    "fieldname": "precipProb0mm6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,0 mm während der letzten 6 Stunden",
+    "description_en": "Probability of precipitation > 0.0mm during the last 6 hours"
+  },
+  {
+    "code": "R602",
+    "fieldname": "precipProb02mm6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,2 mm während der letzten 6 Stunden",
+    "description_en": "Probability of precipitation > 0.2mm during the last 6 hours"
+  },
+  {
+    "code": "R610",
+    "fieldname": "precipProb1mm6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 1,0 mm während der letzten 6 Stunden",
+    "description_en": "Probability of precipitation > 1.0 mm during the last 6 hours"
+  },
+  {
+    "code": "R650",
+    "fieldname": "precipProb5mm6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 5,0 mm während der letzten 6 Stunden",
+    "description_en": "Probability of precipitation > 5.0mm during the last 6 hours"
+  },
+  {
+    "code": "Rad1h",
+    "fieldname": "globalIrradiance",
+    "unit": "kJ/m2",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Globale Einstrahlung",
+    "description_en": "Global Irradiance"
+  },
+  {
+    "code": "Rd00",
+    "fieldname": "precipProb0mm24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,0 mm während der letzten 24 Stunden",
+    "description_en": "Probability of precipitation > 0.0 mm during the last 24 hours"
+  },
+  {
+    "code": "Rd02",
+    "fieldname": "precipProb02mm24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,2 mm während der letzten 24 Stunden",
+    "description_en": "Probability of precipitation > 0.2mm during the last 24 hours"
+  },
+  {
+    "code": "Rd10",
+    "fieldname": "precipProb1mm24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 1,0 mm während der letzten 24 Stunden",
+    "description_en": "Probability of precipitation > 1.0 mm during the last 24 hours"
+  },
+  {
+    "code": "Rd50",
+    "fieldname": "precipProb5mm24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 5,0 mm während der letzten 24 Stunden",
+    "description_en": "Probability of precipitation > 5.0mm during the last 24 hours"
+  },
+  {
+    "code": "Rh00",
+    "fieldname": "precipProb0mm12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,0 mm während der letzten 12 Stunden",
+    "description_en": "Probability of precipitation > 0.0mm during the last 12 hours"
+  },
+  {
+    "code": "Rh02",
+    "fieldname": "precipProb02mm12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 0,2 mm während der letzten 12 Stunden",
+    "description_en": "Probability of precipitation > 0.2mm during the last 12 hours"
+  },
+  {
+    "code": "Rh10",
+    "fieldname": "precipProb1mm12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 1,0 mm während der letzten 12 Stunden",
+    "description_en": "Probability of precipitation > 1.0mm during the last 12 hours"
+  },
+  {
+    "code": "Rh50",
+    "fieldname": "precipProb5mm12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 5,0 mm während der letzten 12 Stunden",
+    "description_en": "Probability of precipitation > 5.0mm during the last 12 hours"
+  },
+  {
+    "code": "RR1c",
+    "fieldname": "precipitation",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Gesamtniederschlag während der letzten Stunde, konsitent mit dem signifikanten Wetter",
+    "description_en": "Total precipitation during the last hour consistent with significant weather"
+  },
+  {
+    "code": "RR1o1",
+    "fieldname": "precipProb10mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 10 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 10 mm during the last hour"
+  },
+  {
+    "code": "RR1u1",
+    "fieldname": "precipProb25mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 25 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 25 mm during the last hour"
+  },
+  {
+    "code": "RR1w1",
+    "fieldname": "precipProb15mm1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Niederschlagswahrscheinlichkeit> 15 mm während der letzten Stunde",
+    "description_en": "Probability of precipitation > 15 mm during the last hour"
+  },
+  {
+    "code": "RR3c",
+    "fieldname": "precipitation3h",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Gesamtniederschlag während der letzten 3 Stunden, konsitent mit dem signifikanten Wetter",
+    "description_en": "Total precipitation during the last 3 hours  consistent with significant weather"
+  },
+  {
+    "code": "RR6c",
+    "fieldname": "precipitation6h",
+    "unit": "kg / m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Gesamtniederschlag während der letzten 6 Stunden, konsitent mit dem signifikanten Wetter",
+    "description_en": "Total precipitation during the last 6 hours consistent with significant weather"
+  },
+  {
+    "code": "RRad1",
+    "fieldname": "irradiance1h",
+    "unit": "% (0..80)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Globale Bestrahlungsstärke innerhalb der letzten Stunde",
+    "description_en": "Global irradiance within the last hour"
+  },
+  {
+    "code": "RRdc",
+    "fieldname": "precipitation24h",
+    "unit": "kg / m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Gesamtniederschlag während der letzten 24 Stunden, konsistent mit dem Wetter",
+    "description_en": "Total precipitation during the last 24 hours consistent with significant weather"
+  },
+  {
+    "code": "RRhc",
+    "fieldname": "precipitation12h",
+    "unit": "kg / m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Gesamtniederschlag während der letzten 12 Stunden, konsitent zumsignifikanten Wetter",
+    "description_en": "Total precipitation during the last 12 hours consistent with significant weather"
+  },
+  {
+    "code": "RRL1c",
+    "fieldname": "liquidPrecipitation1h",
+    "unit": "kg / m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Flüssiger Niederschlag während der letzten Stunde, konsitent zum signifikanten Wetter",
+    "description_en": "Total liquid precipitation during the last hour consistent with significant weather"
+  },
+  {
+    "code": "RRS1c",
+    "fieldname": "sleetEquivalent1h",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Schneeregen-Äquivalent während der letzten Stunde",
+    "description_en": "Snow-Rain-Equivalent during the last hour"
+  },
+  {
+    "code": "RRS3c",
+    "fieldname": "sleetEquivalent3h",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Schneeregen-Äquivalent während der letzten 3 Stunden",
+    "description_en": "Snow-Rain-Equivalent during the last 3 hours"
+  },
+  {
+    "code": "RSunD",
+    "fieldname": "relativeSunshineDuration24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Relative Sonnenscheindauer innerhalb der letzten 24 Stunden",
+    "description_en": "Relative sunshine duration within the last 24 hours"
+  },
+  {
+    "code": "SunD",
+    "fieldname": "sunshineDurationYesterday",
+    "unit": "s",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Sonnenscheindauer Vortag insgesamt",
+    "description_en": "Yesterdays total sunshine duration"
+  },
+  {
+    "code": "SunD1",
+    "fieldname": "sunshineDuration1h",
+    "unit": "s",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Sonnenscheindauer während der letzten Stunde",
+    "description_en": "Sunshine duration during the last Hour"
+  },
+  {
+    "code": "SunD3",
+    "fieldname": "sunshineDuration3h",
+    "unit": "s",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Sonnenscheindauer während der letzten drei Stunden",
+    "description_en": "Sunshine duration during the last three hours"
+  },
+  {
+    "code": "T5cm",
+    "fieldname": "temperature5cm",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Temperatur 5 cm über der Oberfläche",
+    "description_en": "Temperature 5cm above surface"
+  },
+  {
+    "code": "Td",
+    "fieldname": "dewPoint",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Taupunkt 2m über der Oberfläche",
+    "description_en": "Dewpoint 2m above surface"
+  },
+  {
+    "code": "TG",
+    "fieldname": "minSurfaceTemp12h",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Minimale Oberflächentemperatur von 5 cm innerhalb der letzten 12 Stunden",
+    "description_en": "Minimum surface temperature at 5cm within the last 12 hours"
+  },
+  {
+    "code": "TM",
+    "fieldname": "meanTemperature24h",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Mittlere Temperatur während der letzten 24 Stunden",
+    "description_en": "Mean temperature during the last 24 hours"
+  },
+  {
+    "code": "TN",
+    "fieldname": "minTemperature12h",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Mindesttemperatur - innerhalb der letzten 12 Stunden",
+    "description_en": "Minimum temperature - within the last 12 hours"
+  },
+  {
+    "code": "TTT",
+    "fieldname": "temperature",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Temperatur 2m über der Oberfläche",
+    "description_en": "Temperature 2m above surface"
+  },
+  {
+    "code": "TX",
+    "fieldname": "maxTemperature12h",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Maximale Temperatur - innerhalb der letzten 12 Stunden",
+    "description_en": "Maximum temperature - within the last 12 hours"
+  },
+  {
+    "code": "VV",
+    "fieldname": "visibility",
+    "unit": "m",
+    "conversion": "visibilityToKm",
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Sichtweite",
+    "description_en": "Visibility"
+  },
+  {
+    "code": "VV10",
+    "fieldname": "visibilityProbBelow1000m",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Sichtweite unter 1000m",
+    "description_en": "Probability: Visibility below 1000m"
+  },
+  {
+    "code": "W1W2",
+    "fieldname": "pastWeather6h",
+    "unit": "-",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Vergangenes Wetter in den letzten 6 Stunden",
+    "description_en": "Past weather during the last 6 hours"
+  },
+  {
+    "code": "WPc11",
+    "fieldname": "sigWeatherOptional1h",
+    "unit": "- (0..95)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Optional signifikantes Wetter (höchste Priorität) während der letzten Stunde",
+    "description_en": "Optional significant weather (highest priority) during the last hour"
+  },
+  {
+    "code": "WPc31",
+    "fieldname": "sigWeatherOptional3h",
+    "unit": "- (0..95)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Optional signifikantes Wetter (höchste Priorität) während der letzten 3 Stunden",
+    "description_en": "Optional significant weather (highest priority) during the last 3 hours"
+  },
+  {
+    "code": "WPc61",
+    "fieldname": "sigWeatherOptional6h",
+    "unit": "- (0..95)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Optional signifikantes Wetter (höchste Priorität) während der letzten 6 Stunden",
+    "description_en": "Optional significant weather (highest priority) during the last 6 hours"
+  },
+  {
+    "code": "WPcd1",
+    "fieldname": "sigWeatherOptional24h",
+    "unit": "- (0..95)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Optional signifikantes Wetter (höchste Priorität) während der letzten 24 Stunden",
+    "description_en": "Optional significant weather (highest priority) during the last 24 hours"
+  },
+  {
+    "code": "WPch1",
+    "fieldname": "sigWeatherOptional12h",
+    "unit": "- (0..95)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Optional signifikantes Wetter (höchste Priorität) während der letzten 12 Stunden",
+    "description_en": "Optional significant weather (highest priority) during the last 12 hours"
+  },
+  {
+    "code": "ww",
+    "fieldname": "significantWeather",
+    "unit": "-",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Signifikantes Wetter",
+    "description_en": "Significant Weather"
+  },
+  {
+    "code": "ww3",
+    "fieldname": "significantWeather3h",
+    "unit": "- (0..95)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Signifikantes Wetter der letzten 3 Stunden",
+    "description_en": "Significant Weather of the last 3 hours"
+  },
+  {
+    "code": "wwC",
+    "fieldname": "convectivePrecipProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von konvektiven Niederschlägen innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of convective precipitation within the last hour"
+  },
+  {
+    "code": "wwC6",
+    "fieldname": "convectivePrecipProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Konvektionsniederschlägen innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of convective precipitation within the last 6 hours"
+  },
+  {
+    "code": "wwCh",
+    "fieldname": "convectivePrecipProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Vorkommen von konvektiven Niederschlägen innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of convective precipitation within the last 12 hours"
+  },
+  {
+    "code": "wwD",
+    "fieldname": "stratiformPrecipProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Schichtniederschlägen innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of stratiform precipitation within the last hour"
+  },
+  {
+    "code": "wwD6",
+    "fieldname": "stratiformPrecipProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Schichtniederschlägen innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of stratiform precipitation within the last 6 hours"
+  },
+  {
+    "code": "wwDh",
+    "fieldname": "stratiformPrecipProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Schichtniederschlägen innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of stratiform precipitation within the last 12 hours"
+  },
+  {
+    "code": "wwF",
+    "fieldname": "freezingRainProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von gefrierendem Regen innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of freezing rain within the last hour"
+  },
+  {
+    "code": "wwF6",
+    "fieldname": "freezingRainProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von gefrierendem Regen innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of freezing rain within the last 6 hours"
+  },
+  {
+    "code": "wwFh",
+    "fieldname": "freezingRainProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von gefrierendem Regen innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of freezing rain within the last 12 hours"
+  },
+  {
+    "code": "wwL",
+    "fieldname": "liquidPrecipProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von flüssigem Niederschlag innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of liquid precipitation within the last hour"
+  },
+  {
+    "code": "wwL6",
+    "fieldname": "liquidPrecipProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von flüssigem Niederschlag innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of liquid precipitation within the last 6 hours"
+  },
+  {
+    "code": "wwLh",
+    "fieldname": "liquidPrecipProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von flüssigem Niederschlag innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of liquid precipitation within the last 12 hours"
+  },
+  {
+    "code": "wwM",
+    "fieldname": "fogProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit für Nebel in der letzten Stunde",
+    "description_en": "Probability for fog within the last hour"
+  },
+  {
+    "code": "wwM6",
+    "fieldname": "fogProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit für Nebel innerhalb der letzten 6 Stunden",
+    "description_en": "Probability for fog within the last 6 hours"
+  },
+  {
+    "code": "wwMd",
+    "fieldname": "fogProb24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Nebel innerhalb der letzten 24 Stunden",
+    "description_en": "Probability: Occurrence of fog within the last 24 hours"
+  },
+  {
+    "code": "wwMh",
+    "fieldname": "fogProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": true,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit für Nebel innerhalb der letzten 12 Stunden",
+    "description_en": "Probability for fog within the last 12 hours"
+  },
+  {
+    "code": "wwP",
+    "fieldname": "precipProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Niederschlägen innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of precipitation within the last hour"
+  },
+  {
+    "code": "wwP6",
+    "fieldname": "precipProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Niederschlägen innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of precipitation within the last 6 hours"
+  },
+  {
+    "code": "wwPd",
+    "fieldname": "precipProb24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Niederschlägen innerhalb der letzten 24 Stunden",
+    "description_en": "Probability: Occurrence of any precipitation within the last 24 hours"
+  },
+  {
+    "code": "wwPh",
+    "fieldname": "precipProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Niederschlägen innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of precipitation within the last 12 hours"
+  },
+  {
+    "code": "wwS",
+    "fieldname": "solidPrecipProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Feststoffniederschlägen innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of solid precipitation within the last hour"
+  },
+  {
+    "code": "wwS6",
+    "fieldname": "solidPrecipProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Feststoffniederschlägen innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of solid precipitation within the last 6 hours"
+  },
+  {
+    "code": "wwSh",
+    "fieldname": "solidPrecipProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Feststoffniederschlägen innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of solid precipitation within the last 12 hours"
+  },
+  {
+    "code": "wwT",
+    "fieldname": "thunderProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Gewittern innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of thunderstorms within the last hour"
+  },
+  {
+    "code": "wwT6",
+    "fieldname": "thunderProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Gewittern innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of thunderstorms within the last 6 hours"
+  },
+  {
+    "code": "wwTd",
+    "fieldname": "thunderProb24h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Gewittern innerhalb der letzten 24 Stunden",
+    "description_en": "Probability: Occurrence of thunderstorms within the last 24 hours"
+  },
+  {
+    "code": "wwTh",
+    "fieldname": "thunderProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Gewittern innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of thunderstorms within the last 12 hours"
+  },
+  {
+    "code": "wwZ",
+    "fieldname": "drizzleProb1h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Nieselregen innerhalb der letzten Stunde",
+    "description_en": "Probability: Occurrence of drizzle within the last hour"
+  },
+  {
+    "code": "wwZ6",
+    "fieldname": "drizzleProb6h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Nieselregen innerhalb der letzten 6 Stunden",
+    "description_en": "Probability: Occurrence of drizzle within the last 6 hours"
+  },
+  {
+    "code": "wwZh",
+    "fieldname": "drizzleProb12h",
+    "unit": "% (0..100)",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": true,
+    "description_de": "Wahrscheinlichkeit: Auftreten von Nieselregen innerhalb der letzten 12 Stunden",
+    "description_en": "Probability: Occurrence of drizzle within the last 12 hours"
+  },
+  {
+    "code": "RadL3",
+    "fieldname": "longwaveRadiationBalance3h",
+    "unit": "kJ/m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Langwellige Strahlungsbilanz in den letzten 3 Stunden",
+    "description_en": "Long wave radiation balance during the last 3 hours"
+  },
+  {
+    "code": "RadS3",
+    "fieldname": "shortwaveRadiationBalance3h",
+    "unit": "kJ/m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Kurzwellen-Strahlungsbilanz der letzten 3 Stunden",
+    "description_en": "Short wave radiation balance during the last 3 hours"
+  },
+  {
+    "code": "RR1",
+    "fieldname": "precipitation1hRaw",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Gesamtniederschlag in der letzten Stunde",
+    "description_en": "Total precipitation during the last hour"
+  },
+  {
+    "code": "RR3",
+    "fieldname": "precipitation3hRaw",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Gesamtniederschlag in den letzten 3 Stunden",
+    "description_en": "Total precipitation during the last 3 hours"
+  },
+  {
+    "code": "RR6",
+    "fieldname": "precipitation6hRaw",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Gesamtniederschlag in den letzten 6 Stunden",
+    "description_en": "Total precipitation during the last 6 hours"
+  },
+  {
+    "code": "RRd",
+    "fieldname": "precipitation24hRaw",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Gesamtniederschlag in den letzten 24 Stunden",
+    "description_en": "Total precipitation during the last 24 hours"
+  },
+  {
+    "code": "RRh",
+    "fieldname": "precipitation12hRaw",
+    "unit": "kg/m2",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Gesamtniederschlag in den letzten 12 Stunden",
+    "description_en": "Total precipitation during the last 12 hours"
+  },
+  {
+    "code": "H_BsC",
+    "fieldname": "convectiveCloudBase",
+    "unit": "m",
+    "conversion": null,
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Wolkenbasis der konvektiven Wolken",
+    "description_en": "Cloud base of convective clouds"
+  },
+  {
+    "code": "T_2M",
+    "fieldname": "temperature2mModel",
+    "unit": "Kelvin",
+    "conversion": "toC",
+    "mosmix_s": false,
+    "mosmix_l": false,
+    "description_de": "Temperatur 2m über Grund",
+    "description_en": "Temperature 2m above surface"
+  }
+]

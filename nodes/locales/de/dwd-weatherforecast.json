@@ -10,14 +10,15 @@
     "maxHours": "Vorlauf (Std.)",
     "staleOnError": "Fallback bei Fehler",
     "onlyFuture": "Nur zukünftige Zeitpunkte",
-    "outputOptions": "Ausgabe-Optionen",
+    "outputOptions": "Ausgabeoptionen",
     "coreOnly": "Nur Kernfelder",
     "toC": "Temperatur in °C",
     "windToKmh": "Windgeschwindigkeit in km/h",
     "pressureToHpa": "Druck in hPa",
     "visibilityToKm": "Sichtweite in km",
     "windDirMode": "Windrichtung als Text",
-    "diag": "Diagnose aktivieren"
+    "diag": "Diagnose aktivieren",
+    "additionalFields": "Zusatzfelder"
   },
   "ui": {
     "stationPlaceholder": "z. B. H721 (Köln/Bonn)",
@@ -34,6 +35,10 @@
     "windDirMode16": "16-teilig (N, NNO, NO, ONO, O, …)",
     "windDirModeTip": "Bei 8/16-teilig wird zusätzlich windDirCardinal ausgegeben.",
     "diagTip": "Schreibt zusätzliche Diagnose-Meldungen ins Node-RED-Log.",
+    "additionalFieldsPlaceholder": "z. B. SunD,wwT,FX1",
+    "additionalFieldsFilterPlaceholder": "Filtern nach Code, Feldname oder Beschreibung…",
+    "additionalFieldsAriaLabel": "Zusätzliche MOSMIX-Felder (Mehrfachauswahl)",
+    "additionalFieldsTip": "Immer enthalten (Standard): <code>TTT, Td, FF, DD, PPPP, VV, Neff, RR1c</code> — erscheinen nicht in der Liste.<br>Zusätzliche MOSMIX-Felder, die in jeden Datensatz aufgenommen werden. Felder mit zugeordneter Umrechnung werden gemäß der Ausgabeoptionen umgerechnet (Temperatur in °C, Wind in km/h, Druck in hPa, Sichtweite in km), alle anderen bleiben unverändert. Felder ohne Werte im Zeitfenster fehlen in den Datensätzen und werden in <code>msg.fields_not_found</code> gelistet; Felder mit Teil-Lücken stehen als <code>null</code> im jeweiligen Datensatz. Mehrfachauswahl mit Strg/⌘ (bzw. Umschalttaste).",
     "hintHeader": "Hinweis",
     "hintText": "Datenquelle ist die DWD MOSMIX-L-Vorhersage. Aktualisierung i. d. R. stündlich. Mehr Infos unter DWD Open Data."
   },

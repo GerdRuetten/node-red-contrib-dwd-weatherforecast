@@ -17,7 +17,8 @@
     "pressureToHpa": "Pressure in hPa",
     "visibilityToKm": "Visibility in km",
     "windDirMode": "Wind direction as text",
-    "diag": "Enable diagnostics"
+    "diag": "Enable diagnostics",
+    "additionalFields": "Additional fields"
   },
   "ui": {
     "stationPlaceholder": "e.g. H721 (Cologne/Bonn)",
@@ -34,6 +35,10 @@
     "windDirMode16": "16 sectors (N, NNE, NE, ENE, E, …)",
     "windDirModeTip": "In 8/16 sector mode an additional field windDirCardinal is added.",
     "diagTip": "Writes additional diagnostic messages to the Node-RED log.",
+    "additionalFieldsPlaceholder": "e.g. SunD,wwT,FX1",
+    "additionalFieldsFilterPlaceholder": "Filter by code, field name or description…",
+    "additionalFieldsAriaLabel": "Additional MOSMIX fields (multi-select)",
+    "additionalFieldsTip": "Always provided (standard): <code>TTT, Td, FF, DD, PPPP, VV, Neff, RR1c</code> — not listed below.<br>Additional MOSMIX fields to include in every record. Fields with an assigned conversion are converted according to the output options (temperature in °C, wind in km/h, pressure in hPa, visibility in km), all others are left unchanged. Fields with no data in the time window are omitted from the records and listed in <code>msg.fields_not_found</code>; partially available fields appear as <code>null</code> in individual records. Select multiple codes with Ctrl/⌘ (or Shift).",
     "hintHeader": "Note",
     "hintText": "Data source is the DWD MOSMIX L forecast. Usually updated hourly. More info on DWD Open Data."
   },

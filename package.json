@@ -44,7 +44,8 @@
   "scripts": {
     "preversion": "node scripts/ensure-changelog.js",
     "version": "echo 'Version bump handled automatically by npm version'",
-    "postversion": "git push --follow-tags"
+    "postversion": "git push --follow-tags",
+    "test": "node --test"
   },
   "node-red": {
     "version": ">=3.0.0",

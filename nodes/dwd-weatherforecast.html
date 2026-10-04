@@ -171,6 +171,35 @@
 
     <hr/>
 
+    <div class="form-row">
+        <label for="node-input-additionalFields" data-i18n="label.additionalFields">
+            <i class="fa fa-list"></i> Additional fields
+        </label>
+        <div class="form-tips" data-i18n="[html]ui.additionalFieldsTip">
+            Always provided (standard): <code>TTT, Td, FF, DD, PPPP, VV, Neff, RR1c</code> — not listed below.
+            Additional MOSMIX fields to include in every record.
+            Values are passed through as raw MOSMIX values (no unit conversion).
+            Fields missing at the station are returned as <code>null</code> and listed in <code>msg.fields_not_found</code>.
+            Select multiple codes with Ctrl/⌘ (or Shift).
+        </div>
+        <input type="text"
+               id="node-input-additionalFields"
+               data-i18n="[placeholder]ui.additionalFieldsPlaceholder"
+               placeholder="e.g. SunD,wwT,FX1"
+               style="width: calc(100% - 190px); margin-bottom: 4px;">
+        <input type="text"
+               id="node-input-additionalFieldsFilter"
+               data-i18n="[placeholder]ui.additionalFieldsFilterPlaceholder"
+               placeholder="Filter by code, field name or description…"
+               style="width: calc(100% - 190px); margin-bottom: 4px;">
+        <select id="node-input-additionalFieldsSelect" multiple size="8"
+                data-i18n="[aria-label]ui.additionalFieldsAriaLabel"
+                aria-label="Additional MOSMIX fields (multi-select)"
+                style="width: calc(100% - 190px); min-height: 160px;"></select>
+    </div>
+
+    <hr/>
+
     <div class="form-tips">
         <strong data-i18n="ui.hintHeader">Note</strong><br/>
         <span data-i18n="ui.hintText">
@@ -216,7 +245,8 @@
                 pressureToHpa: { value: true },
                 visibilityToKm:{ value: true },
                 windDirMode:   { value: "deg" },
-                diag:          { value: false }
+                diag:          { value: false },
+                additionalFields: { value: "" }
             },
             inputs: 1,
             outputs: 1,
@@ -226,6 +256,75 @@
             },
             labelStyle: function () {
                 return this.name ? "node_label_italic" : "";
+            },
+            oneditprepare: function () {
+                var node = this;
+                var $store = $("#node-input-additionalFields");
+                var $filter = $("#node-input-additionalFieldsFilter");
+                var $select = $("#node-input-additionalFieldsSelect");
+                // muss zu STANDARD_FIELDS in nodes/lib/mosmix-fields.js passen
+                var STANDARD_CODES = ["TTT", "Td", "FF", "DD", "PPPP", "VV", "Neff", "RR1c"];
+                var elements = [];
+                // Vollstaendige Auswahl (inkl. gefiltert ausgeblendeter und
+                // manuell eingegebener Codes) — die gerenderten Optionen
+                // zeigen nur einen Ausschnitt.
+                var fullSelection = selectedCodes();
+                var shownCodes = [];
+
+                function selectedCodes() {
+                    return ($store.val() || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+                }
+
+                function renderOptions() {
+                    var q = ($filter.val() || "").toLowerCase();
+                    var selected = fullSelection;
+                    $select.empty();
+                    shownCodes = [];
+                    var shown = 0;
+                    for (var i = 0; i < elements.length && shown < 200; i++) {
+                        var e = elements[i];
+                        if (STANDARD_CODES.indexOf(e.code) !== -1) continue;
+                        if (q) {
+                            var hay = (e.code + " " + e.fieldname + " " + e.description_de + " " + e.description_en).toLowerCase();
+                            if (hay.indexOf(q) === -1) continue;
+                        }
+                        var label = e.code + "  –  " + e.fieldname + "  (" + (e.description_en || e.description_de) + ")";
+                        var $opt = $("<option>").val(e.code).text(label);
+                        if (selected.indexOf(e.code) !== -1) $opt.prop("selected", true);
+                        $select.append($opt);
+                        shownCodes.push(e.code);
+                        shown++;
+                    }
+                }
+
+                function syncSelectFromInput() {
+                    fullSelection = selectedCodes();
+                    renderOptions();
+                }
+
+                $.getJSON("mosmix-elements", function (data) {
+                    elements = data || [];
+                    renderOptions();
+                }).fail(function () {
+                    elements = [];
+                });
+
+                $filter.on("input", renderOptions);
+                $select.on("change", function () {
+                    // Auswahl -> Eingabefeld. Gefiltert ausgeblendete und
+                    // unbekannte (nicht gerenderte) Codes bleiben erhalten;
+                    // nur die sichtbaren Optionen werden ersetzt.
+                    var picked = $select.val() || [];
+                    var kept = fullSelection.filter(function (c) {
+                        return shownCodes.indexOf(c) === -1;
+                    });
+                    var merged = kept.concat(picked.filter(function (c) {
+                        return kept.indexOf(c) === -1;
+                    }));
+                    fullSelection = merged;
+                    $store.val(merged.join(","));
+                });
+                $store.on("input", syncSelectFromInput);
             }
         });
     })();

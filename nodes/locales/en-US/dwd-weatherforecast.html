@@ -24,24 +24,55 @@
         </dt>
         <dd>
             Array of forecast points ordered by time.
-            Each entry contains at least the timestamp (<code>ts</code>, <code>iso</code>),
-            temperature, wind, relative humidity, pressure, visibility, cloud cover and
-            precipitation (<code>precipitation</code>, <code>precipitationText</code>).
-            Additional convenience fields may be added depending on the configuration.
+            Each entry contains the timestamp (<code>ts</code>, <code>iso</code>) and a
+            <code>type</code> classification (<code>past</code>, <code>current</code>,
+            <code>forecast</code>), the standard fields (temperature, dew point, wind,
+            relative humidity, pressure, visibility, cloud cover, precipitation incl.
+            <code>precipitationText</code>) and every configured additional MOSMIX field.
+            Additional fields with an assigned conversion are converted according
+            to the output options (temperature in °C, wind in km/h, pressure in
+            hPa, visibility in km), all others stay unchanged; a field with no
+            data at all in the time window is omitted from
+            the records and reported in <code>msg.fields_not_found</code>,
+            partially available fields keep <code>null</code> gaps.
         </dd>
 
-        <dt>msg.stationId
-            <span class="property-type">string</span>
-        </dt>
-        <dd>
-            The DWD station id that was used for the request.
-        </dd>
-
-        <dt>msg.meta
+        <dt>msg.station
             <span class="property-type">Object</span>
         </dt>
         <dd>
-            Meta information about the request (time, source, optional diagnostics).
+            The DWD station used for the request (<code>id</code> and resolved <code>name</code>).
+        </dd>
+
+        <dt>msg.used_fields
+            <span class="property-type">Object</span>
+        </dt>
+        <dd>
+            Dictionary of all actually delivered fields: field name to
+            <code>{code, unit, de, en}</code> (MOSMIX code, unit, German/English description).
+            When an output-option conversion was applied, <code>unit</code> holds the
+            effective unit and <code>unit_original</code> the original MOSMIX unit.
+        </dd>
+
+        <dt>msg.fields_not_found
+            <span class="property-type">Object</span>
+        </dt>
+        <dd>
+            Requested additional fields with no data in the current time
+            window, same structure as <code>msg.used_fields</code>. Such fields
+            are omitted from the records entirely; fields with values only at
+            some timestamps remain in the records with <code>null</code> gaps.
+            The standard fields are a fixed part of the record schema: they
+            stay in every record even without values (then <code>null</code>)
+            and do not appear here.
+        </dd>
+
+        <dt>msg._meta
+            <span class="property-type">Object</span>
+        </dt>
+        <dd>
+            Meta information about the request (URL, record count, stale flag,
+            available parameter codes, additional-fields diagnostics).
         </dd>
     </dl>
 
@@ -80,6 +111,16 @@
             Controls whether only a minimal core set of fields is returned or
             whether additional convenience fields are included (for example
             cardinal wind direction and converted units).
+        </dd>
+
+        <dt>Additional fields</dt>
+        <dd>
+            Extra MOSMIX elements (e.g. sunshine duration, gusts, thunderstorm
+            probability) to include in every record, picked from the searchable
+            catalogue. Fields with an assigned conversion are converted according
+            to the output options, all others stay unchanged; a field with no
+            data in the time window is omitted from the records and listed in
+            <code>msg.fields_not_found</code>.
         </dd>
     </dl>
 

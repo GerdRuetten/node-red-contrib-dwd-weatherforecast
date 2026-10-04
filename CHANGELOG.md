@@ -4,7 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-- (none)
+### Added
+- **Additional fields**: configurable extra MOSMIX fields are now included in every record, selected via a searchable multi-select in the edit dialog (choices sourced from the DWD MOSMIX element catalogue, `nodes/mosmix_elements.json`). Fields with an assigned conversion are converted according to the output options (temperature in °C, wind in km/h, pressure in hPa, visibility in km), all others stay unchanged; fields missing at the station are returned as `null`.
+- Field codes are translated to speaking record field names via `nodes/mosmix_elements.json`; codes not listed there use the code itself as field name.
+- New `msg.used_fields` dictionary describing all delivered fields (code, unit, German and English description); `unit` holds the effective unit, with `unit_original` added when a conversion was applied. New `_meta.additionalFields`, `_meta.additionalFieldsSkipped` and `_meta.additionalFieldsNotAvailable` for transparency.
+- New `msg.fields_not_found` dictionary (same structure as `used_fields`) listing requested fields with no data in the current time window; such fields are omitted from the records entirely (partially available fields remain with `null` gaps). `used_fields` itself only contains actually delivered fields.
+- New record field `dewPoint` (from MOSMIX `Td`, respecting the °C setting).
+- New record field `type` classifying each timestamp as `past`, `current` (first step at or after now) or `forecast`.
+- HTTP endpoint `GET /mosmix-elements` serves the MOSMIX element catalogue to the editor.
+- Unit tests (`node --test`, run via `npm test`) and a standalone smoke test (`tools/smoke-test.js`).
+
+### Changed
+- Record assembly now works from a single resolved field list (standard fields plus additional fields, de-duplicated); the existing standard field semantics (unit conversions, derived `relHumidity`, `precipitationText`) are unchanged.
+- Core-only mode keeps additionally configured fields instead of dropping them.
+- `msg.fields_not_found` covers additional fields only. The standard fields are a fixed part of the record schema and stay in every record even when a station delivers no values for them (then as `null`); documentation and help text aligned accordingly.
+- Editor: the additional-fields multi-select now carries a localized accessible label.
+
+### Fixed
+- Fallback source precedence: record assembly now skips `null` values from a primary source so the fallback source is used (e.g. `neff` values are emitted when `Neff` is `null`); `msg.used_fields` and the records are now consistent.
+- Editor: changing the multi-select while a search filter is active no longer drops hidden or manually entered (unknown) codes — the CSV keeps the full selection.
+- Temperature error magnitudes (`E_TTT`, `E_Td`) keep their magnitude when converted to °C according to the output options (a 2 K error becomes 2 °C, not −271.15 °C).
 
 ## [1.4.1] – 2025-11-26
 
